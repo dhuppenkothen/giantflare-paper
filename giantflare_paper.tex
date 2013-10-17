@@ -39,8 +39,36 @@ ABSTRACT GOES HERE!
 \section{Data Analysis}
 \label{sec:analysis}
 
+We include data sets from two different space telescopes in our analysis: The {\it Rossi} X-ray timing Explorer (RXTE), and the {\it Ramaty High Energy Solar Spectroscopic Imager (RHESSI)}. An overview of the RXTE data is given in \citep{israel05}. Data was recorded in $\mathrm{Goodxenon_2s mode}$, allowing for time resolution up to $1 \, \mu \mathrm{s}$, high enough to study high-frequency QPOs.
+Observations taken with {\it RHESSI} are detailed in \citep{watts06}. Following their analysis, we only used photons recorded with the eight front segments of the telescope, which are largely uncontaminated by scattering in the back of the space craft. The high-frequency QPO is seen only in the energy range between $100 \, \mathrm{keV}$ and $200 \, \mathrm{keV}$, hence we filter for these energies. All data are barycentered, that is, corrected for the motion of the space craft through space to avoid systematic effects in the timing analysis.
+
+For the RXTE data, we concentrated on the part of the light curve where the $625 \, \mathrm{Hz}$ QPO was originally found, from around $190\, \mathrm{s}$ after the onset of the flare to the end of the observation. This encompasses a total of $15$ rotational cycles of the neutron star. The {\it RHESSI} observations place the same QPO at a slightly different frequency ($626.5 \, \mathrm{Hz}$ as opposed to $625.5 \, \mathrm{Hz}$), and at an earlier time. For the latter, we search the range from $80\, \mathrm{s}$ to $225 \, \mathrm{s}$ from the onset of the flare, or equivalently 19 cycles.
+
+We split each rotational cycle into a number $N_\mathrm{r}$ of overlapping segments of length $\delta t_{\mathrm{s}}$. For each of these segments, we computed the periodogram and extracted the power at the frequency where the QPO was observed. For each periodogram we tested the significance of the observed power against $N_{\mathrm{sim}}$ simulations, which are constructed in the following way.
+
+As a first step, we smoothed out the light curve to a resolution of $0.01 \, \mathrm{s}$, or equivalently $100 \, \mathrm{Hz}$, ensuring that all possible variability at smaller time scales is eliminated from the data. We then interpolated back to the original time resolution used ($\delta t = 2.5 \times 10^{-5} \, \mathrm{s}$), and added Poisson noise to this smoothed light curve $N_{\mathrm{sim}}$ times. This represents the null hypothesis that the QPO is not present, and that any variability measured at $625 \, \mathrm{Hz}$ is solely due to photon counting noise in the detector. For each of our $N_{\mathrm{sim}}$ simulations, we performed exactly the same analysis as for the observed data. We can then compare the real powers we measured for a given segment to the distribution of simulated powers in that segment. Additionally, we can compare the maximum power observed at $625 \, \mathrm{Hz}$ for all segments in our observed data for the maximum powers at this frequency in the ensemble of simulated light curves. This allows us to construct a p-value for the significance of the observed maximum power to be consistent with the null hypothesis, i.e. pure noise. Note that a number of trials correction for the number of segments searches is automatically included, since we apply the same search procedure to the simulations.
+
+
+In addition to testing all segments individually, we constructed phase-averaged periodograms in the following way. We match all periodograms belonging to segments that start at the same phase with each other. In order to construct the two-cycle average, we average the same phase bins for two consecutive cycles together, and again extract the power at the relevant frequency. We then do the same for the next cycle, and so on until we reach the end of the data under consideration. The result is a moving average over subsequent rotational cycles, where the averaged periodograms match in phase.
+Similarly, we can construct three-cycle averages by combining peridoograms from three consecutive cycles, and so forth, until we average the maximum number of cycles in our particular data set. Note that in both cases, the observed (averaged) powers are not independent. The powers extracted from the individual periodograms are not independent, because segments overlap substantially in our analysis (by design). 
+Similarly, powers in averaged periodograms are not independent both of neighbouring segments as well as phase-matched segments, since each power is averaged at least twice with either neighbour (or more times in the case of constructing averaged periodograms from a larger number of rotational cycles). 
+In each case, we apply the same analysis to our simulations, and thus construct averaged periodograms in the same way for each of our $N_\mathrm{sim}$ simulations. Consequently, we can construct simple p-values for the significance of a signal in the averaged periodograms. 
+ 
+
 \section{Results}
 \label{sec:results}
+
+\subsection{RXTE}
+\label{sec:rxte_results}
+
+\subsection{RHESSI}
+\label{sec:rhessi_results}
+
+TO ADD:
+- periodogram of individual signal in strongest cycle
+- show a savg example plot?
+- pvalues
+- simulation with similar p-values
 
 
 \section{Discussion}
