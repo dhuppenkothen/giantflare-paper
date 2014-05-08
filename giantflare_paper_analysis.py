@@ -156,7 +156,7 @@ def rxte_pvalues():
 
 
 
-def make_rxte_sims(tnew, save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall.dat"):
+def make_rxte_sims(tnew, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall.dat"):
 
     """
     Make 30000 simulated light curves, with the original RXTE giant flare light curve smoothed out to a 0.01s
@@ -171,8 +171,8 @@ def make_rxte_sims(tnew, save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=62
 
     """
 
-    savgall = giantflare.simulations(tnew, nsims=30000, tcoarse = 0.01, tfine =0.5/2000.0, freq=625.0, nsteps=15,
-                                     tseg=3.0, df = 2.66, fnyquist=2000.0, stack=None, setlc=False, set_analysis=True,
+    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=625.0, nsteps=10,
+                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
                                      maxstack=9, qpo=False)
 
     if save:
