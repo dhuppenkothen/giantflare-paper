@@ -97,6 +97,14 @@ def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
 
 def rxte_pvalues():
 
+    """
+    Makes Figure 2 of the paper.
+    Uses a file with simulations from make_rxte_sims(). If you don't want to use the provided file, make it yourself,
+    but be warned that it takes a while!
+
+    """
+
+
     ### load RXTE data
     tnew = load_rxte_data()
 
@@ -112,30 +120,29 @@ def rxte_pvalues():
     ### spowers: powers to the corresponding frequency bins in sfreqs, for all segments
 
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
                                       setlc=True, freq=625.0)
 
     ### stack up periodograms at the same phase at consecutive cycles, up to averaging 9 cycles:
     allstack = giantflare.make_stacks(savg, 10, 15)
 
 
-    ### load powers at 625 Hz from 30000 simulations with the QPO smoothed out:
+    ### load powers at 625 Hz from 40000 simulations with the QPO smoothed out:
     ### if file doesn't exist, load with function make_rxte_sims() below, but be warned that it takes a while
     ### (like a day or so) to run!
-    savgall_sims = gt.getpickle("1806_rxte_tseg=3s_dt=0.5s_df=2.66hz_30000sims_savgall.dat")
+    savgall_sims = np.loadtxt()
 
     ### savgall_sims should be the direct output of giantflare.simulations, which means the first dimension
     ### of the array are the individual segments, the second dimension the simulations.
     ### Thus, for use with make_stacks, we need to transpose it.
-    assert np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1], "savgall_sims should be 315 by 30000, but isn't!"
-
-    savgall_sims = np.transpose(savgall_sims)
+    if np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1]:
+        savgall_sims = np.transpose(savgall_sims)
 
     ### make stacks of all simulations in the same way as for the real data
     ### note that this could take a while and use a lot of memory!
     allstack_sims = []
     for s in savgall_sims:
-        allstack_sims.append(giantflare.make_stacks(s, 10, 15))
+        allstack_sims.append(giantflare.make_stacks(s, 10, 10))
 
 
     ### Compute p-values from data (allstack) and simulations (allstack_sims)
@@ -183,6 +190,61 @@ def make_rxte_sims(tnew, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66
     return savgall
 
 
+
+
+
+def periodogram_nosignal():
+    """
+    Make a periodogram of the seven cycles in the nine-cycle average that don't have the
+    strongest signal to check whether they are significant on their own.
+
+    """
+
+    ### load RXTE data
+    tnew = load_rxte_data()
+
+    ### compute powers at 625 Hz for time segments of 3s duration, binned frequency resolution of 2.66 Hz,
+    ### starting every 0.5(ish) seconds apart
+    ### details in comments for rxte_pvalues()
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+                                      setlc=True, freq=625.0)
+
+    ### make an empty array of zeros
+    savg_nosig = np.zeros(15)
+
+    ### these are the cycles without the strongest signal in them
+    cycles = [0,1,2,3,4,5,8]
+
+    ### loop over cycles and powers at the same phase for these cycles
+    for c in cycles:
+        savg_nosig += np.array(savg[(c*15):((c+1)*15)])
+
+    ### divide by number of cycles
+    savg_nosig = savg_nosig/np.float(len(cycles))
+
+    ### load simulations
+    savgall_sims = gt.getpickle("1806_rxte_tseg=3s_dt=0.5s_df=2.66hz_30000sims_savgall.dat")
+    savgall_sims = np.transpose(savgall_sims)
+
+    savg_nosig_sims = []
+
+    for s in savgall_sims:
+        stemp = np.zeros(15)
+        for c in cycles:
+            stemp += np.array(s[(c*15):((c+1)*15)])
+
+        stemp = stemp/np.float(len(cycles))
+
+        savg_nosig_sims.append(stemp)
+
+    savg_nosig_sims = np.array(savg_nosig_sims)
+
+    n_sig = np.where(savg_nosig_sims.flatten() >= max(savg_nosig))
+
+    pval = np.float(len(n_sig))/np.float(np.max(np.shape(savg_nosig_sims)))
+
+    return pval
 
 ######## SECOND BIT: RHESSI ANALYSIS
 
