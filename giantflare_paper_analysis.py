@@ -27,6 +27,7 @@
 import generaltools as gt
 import numpy as np
 import cPickle as pickle
+import glob
 
 import lightcurve
 import giantflare
@@ -97,6 +98,14 @@ def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
 
 def rxte_pvalues():
 
+    """
+    Makes Figure 2 of the paper.
+    Uses a file with simulations from make_rxte_sims(). If you don't want to use the provided file, make it yourself,
+    but be warned that it takes a while!
+
+    """
+
+
     ### load RXTE data
     tnew = load_rxte_data()
 
@@ -112,30 +121,29 @@ def rxte_pvalues():
     ### spowers: powers to the corresponding frequency bins in sfreqs, for all segments
 
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
                                       setlc=True, freq=625.0)
 
     ### stack up periodograms at the same phase at consecutive cycles, up to averaging 9 cycles:
     allstack = giantflare.make_stacks(savg, 10, 15)
 
 
-    ### load powers at 625 Hz from 30000 simulations with the QPO smoothed out:
+    ### load powers at 625 Hz from 40000 simulations with the QPO smoothed out:
     ### if file doesn't exist, load with function make_rxte_sims() below, but be warned that it takes a while
     ### (like a day or so) to run!
-    savgall_sims = gt.getpickle("1806_rxte_tseg=3s_dt=0.5s_df=2.66hz_30000sims_savgall.dat")
+    savgall_sims = np.loadtxt()
 
     ### savgall_sims should be the direct output of giantflare.simulations, which means the first dimension
     ### of the array are the individual segments, the second dimension the simulations.
     ### Thus, for use with make_stacks, we need to transpose it.
-    assert np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1], "savgall_sims should be 315 by 30000, but isn't!"
-
-    savgall_sims = np.transpose(savgall_sims)
+    if np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1]:
+        savgall_sims = np.transpose(savgall_sims)
 
     ### make stacks of all simulations in the same way as for the real data
     ### note that this could take a while and use a lot of memory!
     allstack_sims = []
     for s in savgall_sims:
-        allstack_sims.append(giantflare.make_stacks(s, 10, 15))
+        allstack_sims.append(giantflare.make_stacks(s, 10, 10))
 
 
     ### Compute p-values from data (allstack) and simulations (allstack_sims)
@@ -156,24 +164,32 @@ def rxte_pvalues():
 
 
 
-def make_rxte_sims(tnew, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall.dat"):
+def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall.dat"):
 
     """
-    Make 30000 simulated light curves, with the original RXTE giant flare light curve smoothed out to a 0.01s
+    Make nsims simulated light curves, with the original RXTE giant flare light curve smoothed out to a 0.01s
     resolution, such that the 625Hz QPO is definitely no longer in the smoothed light curve.
     Then add instrumental noise using a Poisson distribution, and run the same analysis as for the original
     RXTE light curve, with 3s long segments, a frequency resolution of 625 Hz and 0.5s between segment start times.
 
     tnew: array of input photon arrival times, can be e.g. output of load_rxte_data()
 
-    Returns an array of 315 by 30000, i.e. 30000 simulated powers at 625 Hz for each segment. Note that in order
-    to stick this into make_stacks(), one needs to take the transpose!
+    Returns an array of n by nsims, i.e. nsims simulated powers at 625 Hz for each segment; n depends on segment size.
+
+    For large nsims, this can be very long and tedious to run.
+    In this case, the easiest solution is to spawn many smaller runs (~5000 simulations can easily run overnight)
+    onto a multi-core system and let them run in parallel.
 
     """
+    if tnew is None:
+        tnew = load_rxte_data()
 
-    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=625.0, nsteps=15,
-                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
-                                     maxstack=9, qpo=False)
+    savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=624.0, nsteps=10, 
+					  tseg=3.0, df=2.66, set_analysis=True, setlc = False)
+ 
+#    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
+#                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
+#                                     maxstack=9, qpo=False)
 
     if save:
         f = open(fout, "w")
@@ -183,6 +199,191 @@ def make_rxte_sims(tnew, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66
     return savgall
 
 
+def stitch_savgall_together(froot="test"):
+    """
+    Take multiple identical runs of make_rxte_sims() and stitch them together.
+    """
+    savgfiles = glob.glob("%s*"%froot)
+
+    savgall = []
+    for f in savgfiles:
+        savgtemp = np.loadtxt(f)
+
+        savgall.extend(savgtemp)
+
+    return savgall
+
+
+def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotdist=True):
+    """
+    Take several simulation runs made with make_rxte_sims() and read them out one after the other,
+    to avoid memory problems when running make_stacks for very large runs.
+
+    NOTE: This requires simulation files run with the EXACT SAME parameters as the ones used for running
+    giantflare.search_singlepulse() on the data below. You'd better make sure this is true. If not,
+    the comparison will not be correct.
+
+    """
+
+    ### if tnew isn't given, read in:
+    tnew = load_rxte_data()
+
+
+    ### extract maximum powers from data.
+    ### NOTE: I use 624.0 Hz here as the search frequency, because np.searchsorted finds the first element
+    ### in a list *after* the given one. Because of the way I've done the binning, the highest power is actually
+    ### at 624.5 Hz rather than 625 Hz. So there.
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=624.0)
+
+
+    ### make averaged powers for consecutive cycles, up to 10, for each of the nsteps segments per cycle:
+    allstack = giantflare.make_stacks(savg, 10, 10)
+
+
+    ### find all datafiles with string froot_in in their filename
+    savgfiles = glob.glob("%s*"%froot_in)
+
+    maxp_all = []
+    for f in savgfiles[:3]:
+
+        ### load simulation output
+        savgtemp = np.loadtxt(f)
+        print("shape(savgtemp): " + str(np.shape(savgtemp)))
+
+        ### make averaged powers for each of the 10 cycles
+        allstack_temp = []
+        for s in savgtemp[:300]:
+            allstack_temp.append(giantflare.make_stacks(s, 10, 10))
+
+        maxp_temp = []
+        for i in xrange(len(allstack)):
+            amax = np.array([np.max(a[i]) for a in allstack_temp])
+            maxp_temp.append(amax)
+
+        maxp_temp = np.transpose(np.array(maxp_temp))
+        maxp_all.extend(maxp_temp)
+
+    maxp_all = np.array(maxp_all)
+    print("shape(maxp_all) " + str(np.shape(maxp_all)))
+
+    pvals = []
+    for i,a in enumerate(allstack):
+        sims = maxp_all[:,i]
+        print("sims " + str(sims))
+
+        sims_sort = np.sort(sims)
+        len_sims = np.float(len(sims_sort))
+        ind_sims = sims_sort.searchsorted(max(a))
+
+        pvals.append((len_sims-ind_sims)/len(sims))
+
+
+        ### plot distributions of maximum powers against theoretical expectations?
+        if plotdist:
+
+            ### simulated chi-square powers:
+            ### degree of freedom is 2*nbins*ncycles, i.e. 2*no of avg frequency bins*no of avg cycles
+            ### for df = 2.66, nbins=8
+            ### ncycles = i+1 (i.e. index of cycle +1, because index arrays start with zero instead of 1)
+            ### size of output simulations is (n_simulations, n_averagedpowers)
+            chisquare = np.random.chisquare(2*8*(i+1), size=(len_sims,len(a)))/(8.0*(i+1))
+            maxc = np.array([np.max(c) for c in chisquare])
+
+            ### set plotting boundaries
+            minp = 0
+            maxp = np.max([np.max(maxc), np.max(sims)])+1
+
+            fig = figure(figsize=(12,9))
+            ax = fig.add_subplot(111)
+            hist(sims, bins=100, color="cyan", alpha=0.7,
+                 label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
+                 histtype="stepfilled", range=[minp,maxp], normed=True)
+
+            hist(maxc, bins=100, color="magenta", alpha=0.7,
+                 label=r"maximum powers, $\chi^2$ expected powers",
+                 histtype="stepfilled", range=[minp,maxp], normed=True)
+
+            axis([minp, maxp, 0, 1.1])
+            legend(prop={'size':16}, loc='upper right')
+
+            xlabel("Maximum Leahy powers", fontsize=18)
+            ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
+            title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
+            savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
+            close()
+
+    #pvals = np.array(pvals)
+
+    ### Compute theoretical error on p-values
+    #pvals_error = pvalues_error(pvals, len(sims))
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    #errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RXTE data, p-value from %i simulations"%len_sims)
+    savefig("%s_pvals.png"%froot_out, format="png")
+    close()
+
+    return pvals
+
+def periodogram_nosignal():
+    """
+    Make a periodogram of the seven cycles in the nine-cycle average that don't have the
+    strongest signal to check whether they are significant on their own.
+
+    """
+
+    ### load RXTE data
+    tnew = load_rxte_data()
+
+    ### compute powers at 625 Hz for time segments of 3s duration, binned frequency resolution of 2.66 Hz,
+    ### starting every 0.5(ish) seconds apart
+    ### details in comments for rxte_pvalues()
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+                                      setlc=True, freq=625.0)
+
+    ### make an empty array of zeros
+    savg_nosig = np.zeros(15)
+
+    ### these are the cycles without the strongest signal in them
+    cycles = [0,1,2,3,4,5,8]
+
+    ### loop over cycles and powers at the same phase for these cycles
+    for c in cycles:
+        savg_nosig += np.array(savg[(c*15):((c+1)*15)])
+
+    ### divide by number of cycles
+    savg_nosig = savg_nosig/np.float(len(cycles))
+
+    ### load simulations
+    savgall_sims = gt.getpickle("1806_rxte_tseg=3s_dt=0.5s_df=2.66hz_30000sims_savgall.dat")
+    savgall_sims = np.transpose(savgall_sims)
+
+    savg_nosig_sims = []
+
+    for s in savgall_sims:
+        stemp = np.zeros(15)
+        for c in cycles:
+            stemp += np.array(s[(c*15):((c+1)*15)])
+
+        stemp = stemp/np.float(len(cycles))
+
+        savg_nosig_sims.append(stemp)
+
+    savg_nosig_sims = np.array(savg_nosig_sims)
+
+    n_sig = np.where(savg_nosig_sims.flatten() >= max(savg_nosig))
+
+    pval = np.float(len(n_sig))/np.float(np.max(np.shape(savg_nosig_sims)))
+
+    return pval
 
 ######## SECOND BIT: RHESSI ANALYSIS
 
@@ -209,6 +410,55 @@ def load_rhessi_data(datadir="./", tstart=80.0, tend=236.0, climits=[100.0, 200.
     return tnew
 
 
+
+def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=True, froot="1806_rhessi_test"):
+
+    """
+    Make nsims simulated light curves, with the original RHESSI giant flare light curve smoothed out to a 0.01s
+    resolution, such that the 625Hz QPO is definitely no longer in the smoothed light curve.
+    Then add instrumental noise using a Poisson distribution, and run the same analysis as for the original
+    RXTE light curve, with 3s long segments, a frequency resolution of 626 Hz and 0.5s between segment start times.
+
+    tnew: array of input photon arrival times, can be e.g. output of load_rhessi_data()
+
+    Returns an array of n by nsims, i.e. nsims simulated powers at 625 Hz for each segment; n depends on segment size.
+
+    For large nsims, this can be very long and tedious to run.
+    In this case, the easiest solution is to spawn many smaller runs (~5000 simulations can easily run overnight)
+    onto a multi-core system and let them run in parallel.
+
+    NOTE: THIS IS ALMOST THE SAME AS make_rxte_sims, but it loops, because the RHESSI data is tested for various
+    segment lengths.
+
+    It is possible to run this function, but in practice, it's probably both quicker and more efficient to run
+    several instances of giantflare.rxte_simulations() with various values of tseg and df.
+
+    """
+    if tnew is None:
+        tnew = load_rhessi_data()
+
+    if tseg_all is None:
+        ### all tsegs to test
+        tseg_all = [0.5, 1.0, 1.5, 2.0, 3.0]
+
+    if df_all is None:
+        ## corresponding dfs: because the QPO is narrow, I use a frequency resolution of 1 Hz for all but the shortest
+        ## segments, where I can't, because the native frequency resolution is 2 Hz already.
+        df_all = [2.0, 1.0, 1.0, 1.0, 1.0]
+
+
+    for tseg,df in zip(tseg_all, df_all):
+        savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=626.0, nsteps=30,
+					  tseg=tseg, df=df, set_analysis=True, set_lc = False)
+
+#    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
+#                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
+#                                     maxstack=9, qpo=False)
+
+        if save:
+            np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
+
+    return savgall
 
 
 
