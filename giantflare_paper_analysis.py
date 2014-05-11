@@ -27,6 +27,7 @@
 import generaltools as gt
 import numpy as np
 import cPickle as pickle
+import glob
 
 import lightcurve
 import giantflare
@@ -166,15 +167,18 @@ def rxte_pvalues():
 def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall.dat"):
 
     """
-    Make 30000 simulated light curves, with the original RXTE giant flare light curve smoothed out to a 0.01s
+    Make nsims simulated light curves, with the original RXTE giant flare light curve smoothed out to a 0.01s
     resolution, such that the 625Hz QPO is definitely no longer in the smoothed light curve.
     Then add instrumental noise using a Poisson distribution, and run the same analysis as for the original
     RXTE light curve, with 3s long segments, a frequency resolution of 625 Hz and 0.5s between segment start times.
 
     tnew: array of input photon arrival times, can be e.g. output of load_rxte_data()
 
-    Returns an array of 315 by 30000, i.e. 30000 simulated powers at 625 Hz for each segment. Note that in order
-    to stick this into make_stacks(), one needs to take the transpose!
+    Returns an array of n by nsims, i.e. nsims simulated powers at 625 Hz for each segment; n depends on segment size.
+
+    For large nsims, this can be very long and tedious to run.
+    In this case, the easiest solution is to spawn many smaller runs (~5000 simulations can easily run overnight)
+    onto a multi-core system and let them run in parallel.
 
     """
     if tnew is None:
@@ -195,8 +199,130 @@ def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df
     return savgall
 
 
+def stitch_savgall_together(froot="test"):
+    """
+    Take multiple identical runs of make_rxte_sims() and stitch them together.
+    """
+    savgfiles = glob.glob("%s*"%froot)
+
+    savgall = []
+    for f in savgfiles:
+        savgtemp = np.loadtxt(f)
+
+        savgall.extend(savgtemp)
+
+    return savgall
 
 
+def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotdist=True):
+    """
+    Take several simulation runs made with make_rxte_sims() and read them out one after the other,
+    to avoid memory problems when running make_stacks for very large runs.
+
+    NOTE: This requires simulation files run with the EXACT SAME parameters as the ones used for running
+    giantflare.search_singlepulse() on the data below. You'd better make sure this is true. If not,
+    the comparison will not be correct.
+
+    """
+
+    ### if tnew isn't given, read in:
+    tnew = load_rxte_data()
+
+
+    ### extract maximum powers from data.
+    ### NOTE: I use 624.0 Hz here as the search frequency, because np.searchsorted finds the first element
+    ### in a list *after* the given one. Because of the way I've done the binning, the highest power is actually
+    ### at 624.5 Hz rather than 625 Hz. So there.
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=624.0)
+
+
+    ### make averaged powers for consecutive cycles, up to 10, for each of the nsteps segments per cycle:
+    allstack = giantflare.make_stacks(savg, 10, 10)
+
+
+    ### find all datafiles with string froot_in in their filename
+    savgfiles = glob.glob("%s*"%froot_in)
+
+    maxp_all = []
+    for f in savgfiles:
+
+        ### load simulation output
+        savgtemp = np.loadtxt(f)
+        print("shape(savgtemp): " + str(np.shape(savgtemp)))
+
+        ### make averaged powers for each of the 10 cycles
+        allstack_temp = []
+        for s in savgtemp:
+            allstack_temp.append(giantflare.make_stacks(s, 10, 10))
+
+        maxp_temp = []
+        for i in xrange(len(allstack)):
+            amax = np.array([np.max(a[i]) for a in allstack_temp])
+            maxp_temp.append(amax)
+
+        maxp_temp = np.transpose(np.array(maxp_temp))
+        maxp_all.extend(maxp_temp)
+
+    maxp_all = np.array(maxp_all)
+    print("shape(maxp_all) " + str(np.shape(maxp_all)))
+
+    pvals = []
+    for i,a in enumerate(allstack):
+        sims = maxp_all[:,i]
+        print("sims " + str(sims))
+
+        sims_sort = np.sort(sims)
+        len_sims = np.float(len(sims_sort))
+        ind_sims = sims_sort.searchsorted(max(a))
+
+        pvals.append((len_sims-ind_sims)/len(sims))
+
+        ### plot distributions of maximum powers against theoretical expectations?
+        if plotdist:
+
+            ### simulated chi-square powers:
+            ### degree of freedom is 2*nbins*ncycles, i.e. 2*no of avg frequency bins*no of avg cycles
+            ### for df = 2.66, nbins=8
+            ### ncycles = i+1 (i.e. index of cycle +1, because index arrays start with zero instead of 1)
+            ### size of output simulations is (n_simulations, n_averagedpowers)
+            chisquare = np.random.chisquare(2*8*(i+1), size=(len_sims,len(a)))/(8.0*(i+1))
+            maxc = np.array([np.max(c) for c in chisquare])
+
+            ### set plotting boundaries
+            minp = 0
+            maxp = np.max([np.max(maxc), np.max(sims)])+1
+
+            fig = figure(figsize=(12,9))
+            ax = fig.add_subplot(111)
+            hist(sims, bins=100, color="cyan", alpha=0.7,
+                 label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
+                 histtype="stepfilled", range=[minp,maxp], normed=True)
+
+            hist(maxc, bins=100, color="magenta", alpha=0.7,
+                 label=r"maximum powers, $\chi^2$ expected powers",
+                 histtype="stepfilled", range=[minp,maxp], normed=True)
+
+            axis([minp, maxp, 0, 1.1])
+            legend(prop={'size':16}, loc='upper right')
+
+            xlabel("Maximum Leahy powers", fontsize=18)
+            ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
+            title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
+            savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
+            close()
+
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    plot(np.arange(len(pvals))+1, pvals, "-o", lw=3, color="black", markersize=12)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RXTE data, p-value from %i simulations"%len_sims)
+    savefig("%s_pvals.png"%froot_out, format="png")
+    close()
+
+    return pvals
 
 def periodogram_nosignal():
     """
