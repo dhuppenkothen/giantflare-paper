@@ -449,14 +449,14 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 
     for tseg,df in zip(tseg_all, df_all):
         savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=626.0, nsteps=30,
-					  tseg=tseg, df=df, set_analysis=True, setlc = False)
+					  tseg=tseg, df=df, set_analysis=True, set_lc = False)
 
 #    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
 #                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
 #                                     maxstack=9, qpo=False)
 
-    if save:
-        np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
+        if save:
+            np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
 
     return savgall
 
