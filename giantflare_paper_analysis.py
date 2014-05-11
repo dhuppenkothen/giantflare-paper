@@ -181,16 +181,17 @@ def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df
         tnew = load_rxte_data()
 
     savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=624.0, nsteps=10, 
-					  tseg=3.0, df=2.66, set_analysis=True, setlc = False)
+					  tseg=3.0, df=2.66, set_analysis=True, set_lc = False)
  
 #    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
 #                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
 #                                     maxstack=9, qpo=False)
 
     if save:
-        f = open(fout, "w")
-        pickle.dump(savgall, f)
-        f.close()
+        #f = open(fout, "w")
+        #pickle.dump(savgall, f)
+        #f.close()
+	np.savetxt(fout, savgall)
 
     return savgall
 
