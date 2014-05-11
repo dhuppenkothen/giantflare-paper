@@ -246,7 +246,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
     savgfiles = glob.glob("%s*"%froot_in)
 
     maxp_all = []
-    for f in savgfiles:
+    for f in savgfiles[:3]:
 
         ### load simulation output
         savgtemp = np.loadtxt(f)
@@ -254,7 +254,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
 
         ### make averaged powers for each of the 10 cycles
         allstack_temp = []
-        for s in savgtemp:
+        for s in savgtemp[:300]:
             allstack_temp.append(giantflare.make_stacks(s, 10, 10))
 
         maxp_temp = []
@@ -278,6 +278,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
         ind_sims = sims_sort.searchsorted(max(a))
 
         pvals.append((len_sims-ind_sims)/len(sims))
+
 
         ### plot distributions of maximum powers against theoretical expectations?
         if plotdist:
@@ -313,9 +314,16 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
             savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
             close()
 
+    #pvals = np.array(pvals)
+
+    ### Compute theoretical error on p-values
+    #pvals_error = pvalues_error(pvals, len(sims))
+
+    ### plot p-values
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
-    plot(np.arange(len(pvals))+1, pvals, "-o", lw=3, color="black", markersize=12)
+    plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    #errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel("P-value of maximum power", fontsize=20)
     title("SGR 1806-20, RXTE data, p-value from %i simulations"%len_sims)
@@ -402,6 +410,55 @@ def load_rhessi_data(datadir="./", tstart=80.0, tend=236.0, climits=[100.0, 200.
     return tnew
 
 
+
+def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=True, froot="1806_rhessi_test"):
+
+    """
+    Make nsims simulated light curves, with the original RHESSI giant flare light curve smoothed out to a 0.01s
+    resolution, such that the 625Hz QPO is definitely no longer in the smoothed light curve.
+    Then add instrumental noise using a Poisson distribution, and run the same analysis as for the original
+    RXTE light curve, with 3s long segments, a frequency resolution of 626 Hz and 0.5s between segment start times.
+
+    tnew: array of input photon arrival times, can be e.g. output of load_rhessi_data()
+
+    Returns an array of n by nsims, i.e. nsims simulated powers at 625 Hz for each segment; n depends on segment size.
+
+    For large nsims, this can be very long and tedious to run.
+    In this case, the easiest solution is to spawn many smaller runs (~5000 simulations can easily run overnight)
+    onto a multi-core system and let them run in parallel.
+
+    NOTE: THIS IS ALMOST THE SAME AS make_rxte_sims, but it loops, because the RHESSI data is tested for various
+    segment lengths.
+
+    It is possible to run this function, but in practice, it's probably both quicker and more efficient to run
+    several instances of giantflare.rxte_simulations() with various values of tseg and df.
+
+    """
+    if tnew is None:
+        tnew = load_rhessi_data()
+
+    if tseg_all is None:
+        ### all tsegs to test
+        tseg_all = [0.5, 1.0, 1.5, 2.0, 3.0]
+
+    if df_all is None:
+        ## corresponding dfs: because the QPO is narrow, I use a frequency resolution of 1 Hz for all but the shortest
+        ## segments, where I can't, because the native frequency resolution is 2 Hz already.
+        df_all = [2.0, 1.0, 1.0, 1.0, 1.0]
+
+
+    for tseg,df in zip(tseg_all, df_all):
+        savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=626.0, nsteps=30,
+					  tseg=tseg, df=df, set_analysis=True, setlc = False)
+
+#    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
+#                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
+#                                     maxstack=9, qpo=False)
+
+    if save:
+        np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
+
+    return savgall
 
 
 
