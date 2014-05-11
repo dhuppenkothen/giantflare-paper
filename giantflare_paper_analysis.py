@@ -171,7 +171,7 @@ def make_rxte_sims(tnew, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df=2.66
 
     """
 
-    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=625.0, nsteps=10,
+    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=625.0, nsteps=15,
                                      tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
                                      maxstack=9, qpo=False)
 
