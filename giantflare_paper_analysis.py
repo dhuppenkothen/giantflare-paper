@@ -457,7 +457,7 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 #                                     maxstack=9, qpo=False)
 
         if save:
-            np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
+            np.savetxt("%s_tseg=%.2f_df=%.2f_savgall.txt"%(froot, tseg, df), savgall)
 
     return savgall
 
@@ -472,7 +472,7 @@ def rhessi_qpo_sims_allcycles(nsims=1000):
                     175.70906353,  183.28972721,  190.86196136,  198.43483257,
                     206.01998615,  213.58804893,  221.17355442]
 
-    amp_all = [0.2 for t in tstart_all]
+    amp_all = [0.1 for t in tstart_all]
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [False for t in tstart_all]
     length_all = [1.0 for t in tstart_all]
@@ -498,7 +498,7 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000):
                     175.70906353,  183.28972721,  190.86196136,  198.43483257,
                     206.01998615,  213.58804893,  221.17355442]
 
-    amp_all = [0.22 for t in tstart_all]
+    amp_all = [0.1 for t in tstart_all]
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
     length_all = [1.0 for t in tstart_all]
@@ -514,7 +514,7 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000):
 def rhessi_qpo_sims_singlecycle(nsims=1000):
 
     tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
-    amp_all = [0.5, 0.75, 0.2, 0.2, 0.2, 0.2, 0.2]
+    amp_all = [0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05]
 
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
@@ -551,34 +551,35 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
 
     savgall_05, savgall_1, savgall_15, savgall_2, savgall_3 = [], [], [], [], []
 
-    for lc in lcsimall:
+    for i, lc in enumerate(lcsimall):
+        print("I am on simulation %i" %i)
         lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
-                                      setlc=False, freq=626.0)
+                                      setlc=True, freq=626.0)
 
         savgall_05.append(savg_05)
 
         lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=False, freq=626.0)
+                                      setlc=True, freq=626.0)
 
         savgall_1.append(savg_1)
 
         lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=False, freq=626.0)
+                                      setlc=True, freq=626.0)
 
         savgall_15.append(savg_15)
 
         lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=False, freq=626.0)
+                                      setlc=True, freq=626.0)
 
         savgall_2.append(savg_2)
 
         lcall, psall, mid, savg_3, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=3.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=False, freq=626.0)
+                                      setlc=True, freq=626.0)
         savgall_3.append(savg_3)
 
 
