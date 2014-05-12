@@ -247,7 +247,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
     savgfiles = glob.glob("%s*"%froot_in)
 
     maxp_all = []
-    for f in savgfiles[:3]:
+    for f in savgfiles:
 
         ### load simulation output
         savgtemp = np.loadtxt(f)
@@ -255,7 +255,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
 
         ### make averaged powers for each of the 10 cycles
         allstack_temp = []
-        for s in savgtemp[:300]:
+        for s in savgtemp:
             allstack_temp.append(giantflare.make_stacks(s, 10, 10))
 
         maxp_temp = []
@@ -293,20 +293,21 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
             maxc = np.array([np.max(c) for c in chisquare])
 
             ### set plotting boundaries
-            minp = 0
-            maxp = np.max([np.max(maxc), np.max(sims)])+1
+            minx = 0
+            maxx = np.max([np.max(maxc), np.max(sims)])+1
 
             fig = figure(figsize=(12,9))
             ax = fig.add_subplot(111)
-            hist(sims, bins=100, color="cyan", alpha=0.7,
-                 label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
-                 histtype="stepfilled", range=[minp,maxp], normed=True)
+            ns, bins, patches = hist(sims, bins=100, color="cyan", alpha=0.7,
+                                    label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
+                                    histtype="stepfilled", range=[minx,maxx], normed=True)
 
-            hist(maxc, bins=100, color="magenta", alpha=0.7,
-                 label=r"maximum powers, $\chi^2$ expected powers",
-                 histtype="stepfilled", range=[minp,maxp], normed=True)
+            nc, bins, patches = hist(maxc, bins=100, color="magenta", alpha=0.7,
+                                    label=r"maximum powers, $\chi^2$ expected powers",
+                                    histtype="stepfilled", range=[minx,maxx], normed=True)
 
-            axis([minp, maxp, 0, 1.1])
+            maxy = np.max([np.max(ns), np.max(nc)])
+            axis([minx, maxx, 0, maxy+0.1*maxy])
             legend(prop={'size':16}, loc='upper right')
 
             xlabel("Maximum Leahy powers", fontsize=18)
@@ -315,16 +316,16 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
             savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
             close()
 
-    #pvals = np.array(pvals)
+    pvals = np.array(pvals)
 
     ### Compute theoretical error on p-values
-    #pvals_error = pvalues_error(pvals, len(sims))
+    pvals_error = pvalues_error(pvals, len(sims))
 
     ### plot p-values
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
-    plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-    #errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel("P-value of maximum power", fontsize=20)
     title("SGR 1806-20, RXTE data, p-value from %i simulations"%len_sims)
@@ -457,11 +458,141 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 #                                     maxstack=9, qpo=False)
 
         if save:
-            np.savetxt("%s_tseg=%.2f_df=%.2f"%(froot, tseg, df), savgall)
+            np.savetxt("%s_tseg=%.2f_df=%.2f_savgall.txt"%(froot, tseg, df), savgall)
 
     return savgall
 
 
+
+
+def rhessi_qpo_sims_allcycles(nsims=1000):
+    ### first batch of simulations: constant signal in all cycles
+    tstart_all = [  84.80569267,   92.38199711,   99.95283222,  107.52754498,
+                    115.13365078,  122.68631363,  130.26195049,  137.8398037 ,
+                    145.41058636,  152.98174858,  160.5617857 ,  168.1408844 ,
+                    175.70906353,  183.28972721,  190.86196136,  198.43483257,
+                    206.01998615,  213.58804893,  221.17355442]
+
+    amp_all = [0.1 for t in tstart_all]
+    freq_all = [626.5 for t in tstart_all]
+    randomphase_all = [False for t in tstart_all]
+    length_all = [1.0 for t in tstart_all]
+
+    nqpo = len(tstart_all)
+    qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
+        zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
+
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_allcycles")
+
+    return
+
+def rhessi_qpo_sims_allcycles_randomised(nsims=1000):
+
+    """
+     Same as rhessi_qpo_sims_allcycles above, but randomphase = True for all, and amplitude slightly different
+    """
+
+    ### first batch of simulations: constant signal in all cycles
+    tstart_all = [  84.80569267,   92.38199711,   99.95283222,  107.52754498,
+                    115.13365078,  122.68631363,  130.26195049,  137.8398037 ,
+                    145.41058636,  152.98174858,  160.5617857 ,  168.1408844 ,
+                    175.70906353,  183.28972721,  190.86196136,  198.43483257,
+                    206.01998615,  213.58804893,  221.17355442]
+
+    amp_all = [0.1 for t in tstart_all]
+    freq_all = [626.5 for t in tstart_all]
+    randomphase_all = [True for t in tstart_all]
+    length_all = [1.0 for t in tstart_all]
+
+    nqpo = len(tstart_all)
+    qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
+        zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
+
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_allcycles_randomised")
+
+    return
+
+def rhessi_qpo_sims_singlecycle(nsims=1000):
+
+    tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
+    amp_all = [0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05]
+
+    freq_all = [626.5 for t in tstart_all]
+    randomphase_all = [True for t in tstart_all]
+
+    length_all = [0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+    nqpo = len(tstart_all)
+    qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
+        zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
+
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_singlecycle")
+
+    return
+
+
+def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
+    """
+    This function makes simulations with QPOs for the RHESSI data, to compare the real results to
+    what would come out of the analysis given a particular signal.
+
+    For a run of search_singlepulse, with nsteps=30, tseg=2.0, df=1.0, fnyquist=1000, freq=626.0, the locations of
+    - the strongest signal is at tstart = 108.027545-0.5
+    - second strongest signal, one cycle before: tstart = 100.452832-0.5
+    - the last five cycles are at [191.361961365, 198.934832573, 206.519986153, 214.088048935, 221.67355442] - 0.5
+
+    """
+
+    tnew = load_rhessi_data()
+
+
+    lcsimall, savgall, pssimall = giantflare.make_qpo_simulations(tnew, nqpo, qpoparams, nsims=nsims, tcoarse=0.01,
+                                              tfine=0.5/1000.0, freq=626.0, set_analysis=False, set_lc=True)
+
+
+    savgall_05, savgall_1, savgall_15, savgall_2, savgall_3 = [], [], [], [], []
+
+    for i, lc in enumerate(lcsimall):
+        print("I am on simulation %i" %i)
+        lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
+
+        savgall_05.append(savg_05)
+
+        lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
+
+        savgall_1.append(savg_1)
+
+        lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
+
+        savgall_15.append(savg_15)
+
+        lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
+
+        savgall_2.append(savg_2)
+
+        lcall, psall, mid, savg_3, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=3.0, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
+        savgall_3.append(savg_3)
+
+
+    ### save results to file
+    np.savetxt("%s_05.txt"%froot, savgall_05)
+    np.savetxt("%s_1.txt"%froot, savgall_1)
+    np.savetxt("%s_15.txt"%froot, savgall_15)
+    np.savetxt("%s_2.txt"%froot, savgall_2)
+    np.savetxt("%s_3.txt"%froot, savgall_3)
+
+
+    return
 
 
 ######################################################################################################################
