@@ -585,11 +585,11 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
 
 
     ### save results to file
-    np.savetxt("%s_05.txt"%froot, savgall_05)
-    np.savetxt("%s_1.txt"%froot, savgall_1)
-    np.savetxt("%s_15.txt"%froot, savgall_15)
-    np.savetxt("%s_2.txt"%froot, savgall_2)
-    np.savetxt("%s_3.txt"%froot, savgall_3)
+    np.savetxt("%s_savgall_05.txt"%froot, savgall_05)
+    np.savetxt("%s_savgall_1.txt"%froot, savgall_1)
+    np.savetxt("%s_savgall_15.txt"%froot, savgall_15)
+    np.savetxt("%s_savgall_2.txt"%froot, savgall_2)
+    np.savetxt("%s_savgall_3.txt"%froot, savgall_3)
 
 
     return
