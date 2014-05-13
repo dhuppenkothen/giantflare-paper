@@ -688,49 +688,128 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
                                               tfine=0.5/1000.0, freq=626.0, set_analysis=False, set_lc=True)
 
 
-    savgall_05, savgall_1, savgall_15, savgall_2, savgall_3 = [], [], [], [], []
+    savgall_05, savgall_1, savgall_15, savgall_2, savgall_25 = [], [], [], [], []
 
     for i, lc in enumerate(lcsimall):
         print("I am on simulation %i" %i)
-        lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+#        lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
+#        giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
+#                                      setlc=True, freq=626.0)
 
-        savgall_05.append(savg_05)
+#        savgall_05.append(savg_05)
 
-        lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+#        lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
+#        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
+#                                      setlc=True, freq=626.0)
 
-        savgall_1.append(savg_1)
+#        savgall_1.append(savg_1)
 
-        lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+#        lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
+#        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
+#                                      setlc=True, freq=626.0)
 
-        savgall_15.append(savg_15)
+#        savgall_15.append(savg_15)
 
-        lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+#        lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
+#        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
+#                                      setlc=True, freq=626.0)
 
-        savgall_2.append(savg_2)
+#        savgall_2.append(savg_2)
 
-        lcall, psall, mid, savg_3, xerr, ntrials, sfreqs, spowers = \
+        lcall, psall, mid, savg_25, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=3.0, df=1.00, fnyquist=nsims, stack=None,
                                       setlc=True, freq=626.0)
-        savgall_3.append(savg_3)
+        savgall_25.append(savg_25)
 
 
     ### save results to file
-    np.savetxt("%s_savgall_05.txt"%froot, savgall_05)
-    np.savetxt("%s_savgall_1.txt"%froot, savgall_1)
-    np.savetxt("%s_savgall_15.txt"%froot, savgall_15)
-    np.savetxt("%s_savgall_2.txt"%froot, savgall_2)
-    np.savetxt("%s_savgall_3.txt"%froot, savgall_3)
+    #np.savetxt("%s_tseg=0.5_savgall.txt"%froot, savgall_05)
+    #np.savetxt("%s_tseg=1.0_savgall.txt"%froot, savgall_1)
+    #np.savetxt("%s_tseg=1.5_savgall.txt"%froot, savgall_15)
+    #np.savetxt("%s_tseg=2.0_savgall.txt"%froot, savgall_2)
+    np.savetxt("%s_tseg=2.5_savgall.txt"%froot, savgall_25)
 
 
     return
+
+
+def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0, 1.0], froot_in="1806_rhessi",
+                           froot_sims="allcycle"):
+
+    ### if tnew isn't given, read in:
+    tnew = load_rhessi_data()
+
+    savg_data, allstack_data = [], []
+
+    pvals_all, perr_all = [], []
+
+    ### loop over all values of the segment lengths and frequency resolutions
+    for tseg, df in zip(tseg_all, df_all):
+    ### extract maximum powers from data.
+    ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+        lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=626.0)
+
+
+        savg_data.append(savg)
+        ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
+        allstack = giantflare.make_stacks(savg, 19, 30)
+
+        allstack_data.append(allstack)
+
+        ### find all datafiles with string froot_in in their filename
+        print("%s*_tseg=%.1f*"%(froot_in,tseg))
+        savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
+
+        print("Simulation files: " + str(savgfiles))
+
+
+        ### load simulations *WITHOUT* QPO in it
+        maxp_all = []
+        for f in savgfiles:
+
+            ### load simulation output
+            savgtemp = np.loadtxt(f)
+            print("shape(savgtemp): " + str(np.shape(savgtemp)))
+
+            ### make averaged powers for each of the 10 cycles
+            allstack_temp = []
+            for s in savgtemp[:5]:
+                allstack_temp.append(giantflare.make_stacks(s, 19, 30))
+
+            maxp_temp = []
+            for i in xrange(len(allstack)):
+                amax = np.array([np.max(a[i]) for a in allstack_temp])
+                maxp_temp.append(amax)
+
+            maxp_temp = np.transpose(np.array(maxp_temp))
+            maxp_all.extend(maxp_temp)
+
+        maxp_all = np.array(maxp_all)
+        ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
+        ### the index of the power that corresponds to the observed one to compute p-value
+        maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
+        ### transpose maxp, such that it's of the shape [nsims, ncycles]
+        maxp_sorted = np.transpose(maxp_all)
+
+        print("shape(maxp_all) " + str(np.shape(maxp_all)))
+
+        ### load fake data, i.e. simulations *WITH* qpo
+        qpofiles = glob.glob()
+
+
+
+        pvals = []
+        for i,a in enumerate(allstack):
+            sims = maxp_all[:,i]
+            #print("sims " + str(sims))
+
+            sims_sort = np.sort(sims)
+            len_sims = np.float(len(sims_sort))
+            ind_sims = sims_sort.searchsorted(max(a))
+
+            pvals.append((len_sims-ind_sims)/len(sims))
 
 
 ######################################################################################################################
