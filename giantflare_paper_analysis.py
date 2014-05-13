@@ -461,6 +461,142 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 
     return savgall
 
+def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0], df_all=[2.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                               froot_in="test", froot_out="test", plotdist=True):
+    """
+    Take several simulation runs made with make_rhessi_sims() and read them out one after the other,
+    to avoid memory problems when running make_stacks for very large runs.
+
+    NOTE: This requires simulation files run with the EXACT SAME parameters as the ones used for running
+    giantflare.search_singlepulse() on the data below. You'd better make sure this is true. If not,
+    the comparison will not be correct.
+
+    For RHESSI, I use several segment lengths and correspondingly, also different frequency resolutions.
+
+    """
+
+    ### if tnew isn't given, read in:
+    tnew = load_rhessi_data()
+
+    savg_data, allstack_data = [], []
+
+    pvals_all, perr_all = [], []
+
+    ### loop over all values of the segment lengths and frequency resolutions
+    for tseg, df in zip(tseg_all, df_all):
+    ### extract maximum powers from data.
+    ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+        lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=626.0)
+
+
+        savg_data.append(savg)
+        ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
+        allstack = giantflare.make_stacks(savg, 19, 30)
+
+        allstack_data.append(allstack)
+
+        ### find all datafiles with string froot_in in their filename
+        savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
+
+        print("Simulation files: " + str(savgfiles))
+
+        maxp_all = []
+        for f in savgfiles:
+
+            ### load simulation output
+            savgtemp = np.loadtxt(f)
+            print("shape(savgtemp): " + str(np.shape(savgtemp)))
+
+            ### make averaged powers for each of the 10 cycles
+            allstack_temp = []
+            for s in savgtemp:
+                allstack_temp.append(giantflare.make_stacks(s, 19, 30))
+
+            maxp_temp = []
+            for i in xrange(len(allstack)):
+                amax = np.array([np.max(a[i]) for a in allstack_temp])
+                maxp_temp.append(amax)
+
+            maxp_temp = np.transpose(np.array(maxp_temp))
+            maxp_all.extend(maxp_temp)
+
+        maxp_all = np.array(maxp_all)
+        print("shape(maxp_all) " + str(np.shape(maxp_all)))
+
+        pvals = []
+        for i,a in enumerate(allstack):
+            sims = maxp_all[:,i]
+            print("sims " + str(sims))
+
+            sims_sort = np.sort(sims)
+            len_sims = np.float(len(sims_sort))
+            ind_sims = sims_sort.searchsorted(max(a))
+
+            pvals.append((len_sims-ind_sims)/len(sims))
+
+
+            ### plot distributions of maximum powers against theoretical expectations?
+            if plotdist:
+
+                ### simulated chi-square powers:
+                ### degree of freedom is 2*nbins*ncycles, i.e. 2*no of avg frequency bins*no of avg cycles
+                ### for df = 2.66, nbins=8
+                ### ncycles = i+1 (i.e. index of cycle +1, because index arrays start with zero instead of 1)
+                ### size of output simulations is (n_simulations, n_averagedpowers)
+                chisquare = np.random.chisquare(2*8*(i+1), size=(len_sims,len(a)))/(8.0*(i+1))
+                maxc = np.array([np.max(c) for c in chisquare])
+
+                ### set plotting boundaries
+                minx = 0
+                maxx = np.max([np.max(maxc), np.max(sims)])+1
+
+                fig = figure(figsize=(12,9))
+                ax = fig.add_subplot(111)
+                ns, bins, patches = hist(sims, bins=100, color="cyan", alpha=0.7,
+                                        label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
+                                        histtype="stepfilled", range=[minx,maxx], normed=True)
+
+                nc, bins, patches = hist(maxc, bins=100, color="magenta", alpha=0.7,
+                                        label=r"maximum powers, $\chi^2$ expected powers",
+                                        histtype="stepfilled", range=[minx,maxx], normed=True)
+
+                maxy = np.max([np.max(ns), np.max(nc)])
+                axis([minx, maxx, 0, maxy+0.1*maxy])
+                legend(prop={'size':16}, loc='upper right')
+
+                xlabel("Maximum Leahy powers", fontsize=18)
+                ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
+                title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
+                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
+                close()
+
+        pvals = np.array(pvals)
+        pvals_all.append(pvals)
+
+        ### Compute theoretical error on p-values
+        pvals_error = pvalues_error(pvals, len(sims))
+        perr_all.append(pvals_error)
+
+
+    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    for pv, pe, c, in zip(pvals_all, perr_all, colours[:len(pvals_all)]):
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+        errorbar(np.arange(len(pv))+1, pv, yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%tseg)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%len_sims)
+    savefig("%s_pvals.png"%froot_out, format="png")
+    close()
+
+    return pvals
 
 
 
