@@ -774,28 +774,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         print("Simulation files: " + str(savgfiles))
 
 
-        ### load simulations *WITHOUT* QPO in it
-        maxp_all = []
-        for f in savgfiles:
-
-            ### load simulation output
-            savgtemp = np.loadtxt(f)
-            print("shape(savgtemp): " + str(np.shape(savgtemp)))
-
-            ### make averaged powers for each of the 10 cycles
-            allstack_temp = []
-            for s in savgtemp:
-                allstack_temp.append(giantflare.make_stacks(s, 19, 30))
-
-            maxp_temp = []
-            for i in xrange(len(allstack)):
-                amax = np.array([np.max(a[i]) for a in allstack_temp])
-                maxp_temp.append(amax)
-
-            maxp_temp = np.transpose(np.array(maxp_temp))
-            maxp_all.extend(maxp_temp)
-
-        maxp_all = np.array(maxp_all)
+        maxp_all = np.loadtxt("%s_tseg=%.1f_simulated_maxpowers.txt")
         ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
         ### the index of the power that corresponds to the observed one to compute p-value
         maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
@@ -842,13 +821,25 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
             pvals_all.append(pvals)
             pvals_hist_all.append(pvals_hist)
+
         pvals_all = np.array(pvals_all)
+
+        np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals_all)
 
         ax = fig.add_subplot(2,2,k)
         ax.imshow(np.transpose(pvals_hist_all), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
         ax.set_aspect(4)
-        scatter(np.arange(19), np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
-                edgecolor="mediumseagreen", marker="v")
+        scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
+                edgecolor="cyan", marker="v")
+        axis([0,len(allstack), -5.0, 0.0])
+        xlabel("Number of averaged cycles", fontsize=20)
+        ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
+        title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
+
+    savefig("%s_%s_pvals_sims.png", format="png")
+    close()
+
+    return
 
 ######################################################################################################################
 ####### ALL PLOTS ####################################################################################################
@@ -904,6 +895,49 @@ def plot_lightcurves(datadir="./"):
             fontsize=26)
 
     savefig("f1.eps", format='eps')
+    close()
+
+    return
+
+
+def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
+                       nsims=10000, froot="sgr1806_rhessi"):
+
+    """
+    Re-makes the p-value plot for the RHESSI data, without having to re-do the entire analysis.
+
+    filename: a string that has the file with the p-values
+    tseg: a list of the segment lengths used for the various p-values
+    nsims: the number of simulations from which the p-value was derived, to compute the error
+    froot: output file name root
+    """
+
+    pvals_all = np.loadtxt(filename)
+    print("shape pvals_all: "+ str(np.shape(pvals_all)))
+
+    pvals_error = [pvalues_error(pvals, nsims) for pvals in pvals_all]
+    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+
+    log_errors = [0.434*dp/p for dp,p in zip(pvals_error, pvals_all)]
+    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+
+    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
+
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    for ts, pv, pe, c, in zip(tseg, pvals_all, log_errors, colours[:len(pvals_all)]):
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%ts)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel(r"$\log_{10}{(\mathrm{p-value\; of\; maximum\; power})}$", fontsize=20)
+    legend(loc="upper right", prop={"size":16})
+    axis([0,20,-4.2, 0.5])
+    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
+    savefig("%s_pvals.png"%froot, format="png")
     close()
 
     return
