@@ -462,7 +462,7 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
     return savgall
 
 def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0], df_all=[2.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                               froot_in="test", froot_out="test", plotdist=True):
+                               froot_in="1806_rhessi", froot_out="test", plotdist=True):
     """
     Take several simulation runs made with make_rhessi_sims() and read them out one after the other,
     to avoid memory problems when running make_stacks for very large runs.
@@ -498,6 +498,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
         allstack_data.append(allstack)
 
         ### find all datafiles with string froot_in in their filename
+        print("%s*_tseg=%.1f*"%(froot_in,tseg))
         savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
 
         print("Simulation files: " + str(savgfiles))
@@ -596,7 +597,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
     savefig("%s_pvals.png"%froot_out, format="png")
     close()
 
-    return pvals
+    return pvals_all
 
 
 
