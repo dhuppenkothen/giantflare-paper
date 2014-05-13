@@ -574,7 +574,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
                 xlabel("Maximum Leahy powers", fontsize=18)
                 ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
                 title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
-                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)), format="png")
+                savefig("%s_tseg=%.1f_maxdist_ncycle%i.png"%(froot_out,tseg, (i+1)), format="png")
                 close()
 
         pvals = np.array(pvals)
@@ -727,10 +727,10 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
 
 
     ### save results to file
-    #np.savetxt("%s_tseg=0.5_savgall.txt"%froot, savgall_05)
-    #np.savetxt("%s_tseg=1.0_savgall.txt"%froot, savgall_1)
-    #np.savetxt("%s_tseg=1.5_savgall.txt"%froot, savgall_15)
-    #np.savetxt("%s_tseg=2.0_savgall.txt"%froot, savgall_2)
+    np.savetxt("%s_tseg=0.5_savgall.txt"%froot, savgall_05)
+    np.savetxt("%s_tseg=1.0_savgall.txt"%froot, savgall_1)
+    np.savetxt("%s_tseg=1.5_savgall.txt"%froot, savgall_15)
+    np.savetxt("%s_tseg=2.0_savgall.txt"%froot, savgall_2)
     np.savetxt("%s_tseg=2.5_savgall.txt"%froot, savgall_25)
 
 
