@@ -604,7 +604,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
 
 
 
-def rhessi_qpo_sims_allcycles(nsims=1000):
+def rhessi_qpo_sims_allcycles(nsims=1000, froot="1806_rhessi"):
     ### first batch of simulations: constant signal in all cycles
     tstart_all = [  84.80569267,   92.38199711,   99.95283222,  107.52754498,
                     115.13365078,  122.68631363,  130.26195049,  137.8398037 ,
@@ -621,11 +621,11 @@ def rhessi_qpo_sims_allcycles(nsims=1000):
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
         zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
 
-    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_allcycles")
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="%s_allcycles"%froot)
 
     return
 
-def rhessi_qpo_sims_allcycles_randomised(nsims=1000):
+def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
 
     """
      Same as rhessi_qpo_sims_allcycles above, but randomphase = True for all, and amplitude slightly different
@@ -647,11 +647,11 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000):
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
         zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
 
-    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_allcycles_randomised")
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="%s_allcycles_randomised"%froot)
 
     return
 
-def rhessi_qpo_sims_singlecycle(nsims=1000):
+def rhessi_qpo_sims_singlecycle(nsims=1000, froot="1806_rhessi"):
 
     tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
     amp_all = [0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05]
@@ -665,7 +665,7 @@ def rhessi_qpo_sims_singlecycle(nsims=1000):
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
         zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
 
-    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="1806_rhessi_singlecycle")
+    make_rhessi_qpo_sims(nqpo, qpoparams_all, nsims=nsims, froot="%s_singlecycle"%froot)
 
     return
 
@@ -761,7 +761,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
 
         ### find all datafiles with string froot_in in their filename
         print("%s*_tseg=%.1f*"%(froot_in,tseg))
-        savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
+        savgfiles = glob.glob("%s*_tseg=%.1f*_df=*"%(froot_in,tseg))
 
         print("Simulation files: " + str(savgfiles))
 
@@ -776,7 +776,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
 
             ### make averaged powers for each of the 10 cycles
             allstack_temp = []
-            for s in savgtemp[:5]:
+            for s in savgtemp:
                 allstack_temp.append(giantflare.make_stacks(s, 19, 30))
 
             maxp_temp = []
@@ -797,20 +797,37 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
         print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
         ### load fake data, i.e. simulations *WITH* qpo
-        qpofiles = glob.glob()
+        qpofiles = glob.glob("%s_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+
+        ### allow for qpo simulations to be broken up into several parts
+        for q in qpofiles:
+            savg_qpo = np.loadtxt(q)
+            ### make averaged powers for each of the 10 cycles
+            allstack_qpo = []
+            for s in savg_qpo:
+                allstack_qpo.append(giantflare.make_stacks(s, 19, 30))
+
+            allstack_qpo = np.array(allstack_qpo)
+            pvals_all, pvals_hist = [], []
+            for i in xrange(len(allstack)):
+
+                ### these are the simulations WITHOUT QPO
+                sims = maxp_all[:,i]
+                len_sims = np.float(len(sims))
+                print("len_simsL %i" %len_sims)
+                ### find index in sorted simulations without QPO that correspond to the observed maximum power
+                ### for the simulated light curve with QPO
+                ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
+                pvals_temp = (len_sims-ind_temp)/len_sims
+
+                pvals_all.append(pvals_temp)
+
+                h, bins = np.histogram(np.log10(pvals_temp), bins=15, range=[-5.0, 0.0])
+                pvals_hist.append(h)
+
+            pvals_all = np.array(pvals_all)
 
 
-
-        pvals = []
-        for i,a in enumerate(allstack):
-            sims = maxp_all[:,i]
-            #print("sims " + str(sims))
-
-            sims_sort = np.sort(sims)
-            len_sims = np.float(len(sims_sort))
-            ind_sims = sims_sort.searchsorted(max(a))
-
-            pvals.append((len_sims-ind_sims)/len(sims))
 
 
 ######################################################################################################################
