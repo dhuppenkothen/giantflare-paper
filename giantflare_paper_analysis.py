@@ -538,7 +538,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
             pvals.append((len_sims-ind_sims)/len(sims))
 
 
-            ### plot distributions of maximum power˚s against theoretical expectations?
+            ### plot distributions of maximum powers against theoretical expectations?
             if plotdist:
 
                 ### simulated chi-square powers:
