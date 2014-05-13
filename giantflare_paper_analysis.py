@@ -185,16 +185,17 @@ def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df
         tnew = load_rxte_data()
 
     savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=624.0, nsteps=10, 
-					  tseg=3.0, df=2.66, set_analysis=True, setlc = False)
+					  tseg=3.0, df=2.66, set_analysis=True, set_lc = False)
  
 #    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
 #                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
 #                                     maxstack=9, qpo=False)
 
     if save:
-        f = open(fout, "w")
-        pickle.dump(savgall, f)
-        f.close()
+        #f = open(fout, "w")
+        #pickle.dump(savgall, f)
+        #f.close()
+	np.savetxt(fout, savgall)
 
     return savgall
 
@@ -570,17 +571,17 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
                 xlabel("Maximum Leahy powers", fontsize=18)
                 ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
                 title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
-                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
+                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)), format="png")
                 close()
 
         pvals = np.array(pvals)
         pvals_all.append(pvals)
 
-        np.savetxt("%s_pvals_all.txt"%froot_out, pvals_all)
-
         ### Compute theoretical error on p-values
         pvals_error = pvalues_error(pvals, len(sims))
         perr_all.append(pvals_error)
+
+    np.savetxt("%s_pvals_all.txt"%froot_out, pvals_all)
 
 
     colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
