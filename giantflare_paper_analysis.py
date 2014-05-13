@@ -571,7 +571,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
                 xlabel("Maximum Leahy powers", fontsize=18)
                 ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
                 title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
-                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
+                savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)), format="png")
                 close()
 
         pvals = np.array(pvals)
