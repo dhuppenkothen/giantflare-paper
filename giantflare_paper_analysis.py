@@ -33,6 +33,7 @@ import lightcurve
 import giantflare
 
 from pylab import *
+import matplotlib.cm as cm
 rc("font", size=20, family="serif", serif="Computer Sans")
 rc("text", usetex=True)
 
@@ -527,6 +528,8 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
         maxp_all = np.array(maxp_all)
         print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
+        np.savetxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_out, tseg), maxp_all)
+
         pvals = []
         for i,a in enumerate(allstack):
             sims = maxp_all[:,i]
@@ -693,29 +696,29 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
 
     for i, lc in enumerate(lcsimall):
         print("I am on simulation %i" %i)
-#        lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
-#        giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
-#                                      setlc=True, freq=626.0)
+        lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
 
-#        savgall_05.append(savg_05)
+        savgall_05.append(savg_05)
 
-#        lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
-#        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
-#                                      setlc=True, freq=626.0)
+        lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
 
-#        savgall_1.append(savg_1)
+        savgall_1.append(savg_1)
 
-#        lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
-#        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
-#                                      setlc=True, freq=626.0)
+        lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
 
-#        savgall_15.append(savg_15)
+        savgall_15.append(savg_15)
 
-#        lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
-#        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
-#                                      setlc=True, freq=626.0)
+        lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=626.0)
 
-#        savgall_2.append(savg_2)
+        savgall_2.append(savg_2)
 
         lcall, psall, mid, savg_25, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=3.0, df=1.00, fnyquist=nsims, stack=None,
@@ -734,7 +737,7 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
     return
 
 
-def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0, 1.0], froot_in="1806_rhessi",
+def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="1806_rhessi",
                            froot_sims="allcycle"):
 
     ### if tnew isn't given, read in:
@@ -744,10 +747,15 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
 
     pvals_all, perr_all = [], []
 
+
+    fig = figure(figsize=(24,18))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+
     ### loop over all values of the segment lengths and frequency resolutions
-    for tseg, df in zip(tseg_all, df_all):
-    ### extract maximum powers from data.
-    ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+    for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
+        ### extract maximum powers from data.
+        ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
         lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
             giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
                                       setlc=True, freq=626.0)
@@ -799,8 +807,9 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
         ### load fake data, i.e. simulations *WITH* qpo
         qpofiles = glob.glob("%s_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
 
+        pvals_all, pvals_data, pvals_hist_all = [], [], []
         ### allow for qpo simulations to be broken up into several parts
-        for q in qpofiles:
+        for j,q in enumerate(qpofiles):
             savg_qpo = np.loadtxt(q)
             ### make averaged powers for each of the 10 cycles
             allstack_qpo = []
@@ -808,27 +817,38 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all=[2.0, 1.0, 1.0
                 allstack_qpo.append(giantflare.make_stacks(s, 19, 30))
 
             allstack_qpo = np.array(allstack_qpo)
-            pvals_all, pvals_hist = [], []
+
+            pvals, pvals_hist = [], []
             for i in xrange(len(allstack)):
 
                 ### these are the simulations WITHOUT QPO
                 sims = maxp_all[:,i]
                 len_sims = np.float(len(sims))
                 print("len_simsL %i" %len_sims)
+
+                if j == 0:
+                    ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
+                    pvals_data.append((len_sims-ind_data)/len_sims)
+
                 ### find index in sorted simulations without QPO that correspond to the observed maximum power
                 ### for the simulated light curve with QPO
                 ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
                 pvals_temp = (len_sims-ind_temp)/len_sims
 
-                pvals_all.append(pvals_temp)
+                pvals.append(pvals_temp)
 
-                h, bins = np.histogram(np.log10(pvals_temp), bins=15, range=[-5.0, 0.0])
-                pvals_hist.append(h)
+                h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-5.0, 0.0])
+                pvals_hist.append(h[::-1])
 
-            pvals_all = np.array(pvals_all)
+            pvals_all.append(pvals)
+            pvals_hist_all.append(pvals_hist)
+        pvals_all = np.array(pvals_all)
 
-
-
+        ax = fig.add_subplot(2,2,k)
+        ax.imshow(np.transpose(pvals_hist_all), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
+        ax.set_aspect(4)
+        scatter(np.arange(19), np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
+                edgecolor="mediumseagreen", marker="v")
 
 ######################################################################################################################
 ####### ALL PLOTS ####################################################################################################
