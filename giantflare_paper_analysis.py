@@ -530,7 +530,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
         pvals = []
         for i,a in enumerate(allstack):
             sims = maxp_all[:,i]
-            print("sims " + str(sims))
+            #print("sims " + str(sims))
 
             sims_sort = np.sort(sims)
             len_sims = np.float(len(sims_sort))
@@ -539,7 +539,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
             pvals.append((len_sims-ind_sims)/len(sims))
 
 
-            ### plot distributions of maximum powers against theoretical expectations?
+            ### plot distributions of maximum power˚s against theoretical expectations?
             if plotdist:
 
                 ### simulated chi-square powers:
@@ -576,6 +576,8 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
 
         pvals = np.array(pvals)
         pvals_all.append(pvals)
+
+        np.savetxt("%s_pvals_all.txt"%froot_out)
 
         ### Compute theoretical error on p-values
         pvals_error = pvalues_error(pvals, len(sims))
