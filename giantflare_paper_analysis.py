@@ -946,12 +946,12 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals)
 
         ax = fig.add_subplot(2,2,k+1)
-        ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
+        ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -4.1,0.0])
         ax.set_aspect(3)
         print('len(pvals_data): ' + str(len(pvals_data)))
         scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
                 edgecolor="cyan", marker="v")
-        axis([0,len(allstack), -5.0, 0.0])
+        axis([0,len(allstack), -4.1, 0.0])
         xlabel("Number of averaged cycles", fontsize=20)
         ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
         title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
