@@ -434,15 +434,15 @@ def compute_quantiles(savg_all, quantiles=[0.05, 0.5, 0.95]):
     return np.array(sq_all)
 
 
-def rxte_qpo_sims_singlecycle(nsims=100, froot="sgr1806_rxte"):
+def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
 
     coarsesteps = 10
     finesteps = 750 ### starting approx every 0.01s apart
 
     tnew = load_rxte_data()
 
-    tstart_all = [211.5, 241.6]
-    amp_all = [0.1, 0.2]
+    tstart_all = [211.4, 241.5]
+    amp_all = [0.15, 0.22]
 
     freq_all = [625.0 for t in tstart_all]
     randomphase_all = [False for t in tstart_all]
@@ -1118,6 +1118,91 @@ def plot_lightcurves(datadir="./"):
 
     savefig("f1.eps", format='eps')
     close()
+
+    return
+
+def plot_rxte_pvalues(nsims=100000, froot = "sgr1806_rxte"):
+
+    pvals = np.loadtxt("%s_pvals_all.txt"%froot)
+
+    ### Compute theoretical error on p-values
+    pvals_error = pvalues_error(pvals, nsims)
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RXTE data, p-value from %i simulations"%nsims)
+    savefig("f2.eps", format="eps")
+    close()
+
+
+
+def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
+
+    """
+    Use output of rxte_qpo_sims_singlecycle() to make a plot that shows the cycle with the
+    strongest QPO in the RXTE data, and overplots the mean and 0.05/0.95 quantiles as red line and
+    shaded area, respectively.
+
+    Plotting in here is slightly different than in rxte_qpo_sims_singlecycle(), owing to the fact
+    that eps doesn't allow for transparency natively.
+
+
+    """
+
+
+    tnew = load_rxte_data()
+
+    mid_fine = np.loadtxt("%s_midbins.txt"%froot)
+    sq_all = np.loadtxt("%s_quantiles.txt"%froot)
+
+    minind = tnew.searchsorted(236.0)
+    maxind = tnew.searchsorted(236.0+(1.0/0.132)*2)
+
+    tnew_small = tnew[minind:maxind]
+
+    finesteps = 250
+    print("finesteps: %.4f" %finesteps)
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+
+    ### plot quantiles as shaded area:
+    fill_between(mid_fine, sq_all[:,0], sq_all[:,2], color="lightcoral", label="95\% quantiles from simulations",
+                 zorder=1)
+
+    plot(mid_fine, sq_all[:,0], lw=2, color="red")
+    plot(mid_fine, sq_all[:,2], lw=2, color="red")
+
+    ### plot data
+    plot(mid, savg, lw=3, color="black", label="observed data")
+
+
+    ### plot mean from simulations:
+    plot(mid_fine, sq_all[:,1], lw=2, color="red", label="mean of simulations")
+
+
+
+    maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
+
+    legend(loc="upper right", prop={"size":16})
+    #axis([238.0, 246.0, 0, maxy+2])
+    xlabel("Time since trigger [s]", fontsize=20)
+    ylabel("Leahy Power", fontsize=20)
+
+
+    savefig("f3.eps", format="eps")
+    close()
+
 
     return
 
