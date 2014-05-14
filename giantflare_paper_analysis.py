@@ -870,7 +870,7 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
 def rhessi_qpo_sims_singlecycle(nsims=1000, froot="1806_rhessi"):
 
     tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
-    amp_all = [0.3, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2]
+    amp_all = [0.3, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2]
 
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
@@ -1030,7 +1030,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
             pvals.append(pvals_temp)
 
 
-            h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-5.0, 0.0])
+            h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-4.1, 0.0])
             pvals_hist.append(h[::-1])
 
         print("shape(pvals): " + str(np.shape(pvals)))
@@ -1045,7 +1045,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         #print("froot_sims: %s" %froot_sims)
         #print("tseg: %f" %tseg)
 
-        np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals)
+        np.savetxt("%s_%s_tseg=%.1f_pvals.txt"%(froot_in, froot_sims, tseg), pvals)
 
         ax = fig.add_subplot(2,2,k+1)
         ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -4.1,0.0])
@@ -1250,6 +1250,75 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
 
     return
 
+
+
+def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0, 1.0]):
+
+    tnew = load_rhessi_data()
+
+
+
+    for f,namestr in enumerate(["allcycle", "allcycle_randomised", "singlecycle"]):
+
+        fig = figure(figsize=(24,18))
+        subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+
+
+        ### loop over all values of the segment lengths and frequency resolutions
+        for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
+            ### extract maximum powers from data.
+            ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+            lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+                giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
+                                              setlc=True, freq=626.0)
+
+
+            ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
+            allstack = giantflare.make_stacks(savg, 19, 30)
+
+
+            maxp_all = np.loadtxt("%sgr1806_rhessi_tseg=%.1f_simulated_maxpowers.txt"%(tseg))
+
+            pvals = np.loadtxt("%sg1806_rhessi_%s_tseg=%.1f"%(namestr, tseg))
+
+            pvals_data, pvals_hist = [], []
+            for i in xrange(len(allstack)):
+
+                    ### these are the simulations WITHOUT QPO
+                sims = maxp_all[:,i]
+                sims = np.sort(sims)
+                len_sims = np.float(len(sims))
+                print("len_sims %i" %len_sims)
+                print("sims[0:10] " + str(sims[0:10]))
+                print("sims[-10:] " + str(sims[-10:]))
+
+
+                ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
+                pvals_data.append((len_sims-ind_data)/len_sims)
+
+
+                h, bins = np.histogram(np.log10(pvals[i]), bins=30, range=[-4.1, 0.0])
+                pvals_hist.append(h[::-1])
+
+            print("shape(pvals): " + str(np.shape(pvals)))
+            print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
+
+            ax = fig.add_subplot(2,2,k+1)
+            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -4.1,0.0])
+            ax.set_aspect(3)
+            print('len(pvals_data): ' + str(len(pvals_data)))
+            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
+                    edgecolor="cyan", marker="v")
+            axis([0,len(allstack), -4.1, 0.0])
+            xlabel("Number of averaged cycles", fontsize=20)
+            ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
+            title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
+
+        savefig("f%i.eps"%f, format="eps")
+        close()
+
+    return
 
 
 def main():

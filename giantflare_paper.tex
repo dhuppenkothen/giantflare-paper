@@ -85,7 +85,7 @@ The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{f2.png}
+\includegraphics[width=9cm]{f2.eps}
 \caption{Integrated probability of observing a signal at $625 \, \mathrm{Hz}$ in the {\it RXTE} data at least as high or higher than the observed power in dependence of the number of cycles averaged. For each data point, we extracted the maximum power from all (averaged) segments over the entire length of the searched part of the giant flare light curve, for both the observation and the simulated light curves. Errors on the p-values are derived from the theoretical approximation valid for small probabilities $\Delta p = \sqrt{p (1-p)/N}$, where $p$ is the $p-value$ and $N$ is the number of simulations. A smaller $p$-value corresponds to a higher significance: when averaging cycles, the signal actually becomes less significance, with a minimum for averaging two consecutive cycles. This indicates that the signal is likely only present in two cycles.}
 \label{fig:rxte_pvals}
 \end{center}
@@ -104,13 +104,13 @@ The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for
 We first repeated the analysis from \citealt{Strohmayer06} in order to reproduce their results, paying special attention to the overall number of cycles during which the signal was present, as well as the duration of the presence of the QPO in any individual cycle.
 We search individual segments of $t_{\mathrm{set}} = 3 \, \mathrm{s}$ length, starting every $\approx 0.75 \, \mathrm{s}$, such that consecutive segments overlap by $2.25 \, \mathrm{s}$. We extracted the power at $625 \, \mathrm{Hz}$, then ran $10^5$ simulations as described in \ref{sec:analysis} and compared the powers at $625 \, \mathrm{Hz}$ for each segment as well as phase-averaged segments to the powers extracted in the same way from the simulations.
 
-\begin{figure*}[htbp]
+\begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=\textwidth]{f3.eps}
+\includegraphics[width=9cm]{f3.eps}
 \caption{}
 \label{fig:rxte_lc_combined}
 \end{center}
-\end{figure*}
+\end{figure}
 
 
 There is a strong QPO signal at $625$ Hz in a cycle starting at $239\, \mathrm{s}$ after the trigger, as reported in \citet{Strohmayer06}. In order to answer the question whether this signal is present over all nine cycles, for which results are reported in \citet{Strohmayer05}, or whether it is only present in a single cycle, we constructed phase-averaged periodograms averaging up to nine periodograms, and constructed p-values as described in Section \ref{sec:analysis}. Figure \ref{fig:rxte_pvals} presents the results: the significance of the QPO depends strongly on how many cycles are averaged. The smallest p-value, corresponding to the smallest probability that the observed power could be due to a chance occurrence, occurs when averaging 9 cycles, consistent with the results in \citet{Strohmayer06}. However, we also note that for a signal consistently present over all 9 cycles, we would expect the p-value to slowly drop with an increasing number of averaged cycles. This is not observed: there is a significant detection in a single cycle, starting at $239\,\mathrm{s}$ after trigger. When averaging neighbouring cycles into that strong signal, the p-value first increases by a factor of five, then drops sharply for an average of 5 cycles. 
