@@ -216,7 +216,8 @@ def stitch_savgall_together(froot="test"):
     return savgall
 
 
-def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotdist=True):
+def rxte_simulations_results(tnew=None, froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_final",
+                             froot_out="sgr1806_rxte", plotdist=True):
     """
     Take several simulation runs made with make_rxte_sims() and read them out one after the other,
     to avoid memory problems when running make_stacks for very large runs.
@@ -270,6 +271,8 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
     maxp_all = np.array(maxp_all)
     print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
+    np.savetxt("%s_simulated_maxpowers.txt"%froot_out, maxp_all)
+
     pvals = []
     for i,a in enumerate(allstack):
         sims = maxp_all[:,i]
@@ -319,7 +322,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
 
     pvals = np.array(pvals)
 
-
+    np.savetxt("%s_pvals_all.txt"%froot_out, pvals)
 
     ### Compute theoretical error on p-values
     pvals_error = pvalues_error(pvals, len(sims))
@@ -337,7 +340,7 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
 
     return pvals
 
-def periodogram_nosignal():
+def periodogram_nosignal(froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_final", froot_out="sgr1806_rxte"):
     """
     Make a periodogram of the seven cycles in the nine-cycle average that don't have the
     strongest signal to check whether they are significant on their own.
@@ -347,36 +350,48 @@ def periodogram_nosignal():
     ### load RXTE data
     tnew = load_rxte_data()
 
+    nsteps=10
+
     ### compute powers at 625 Hz for time segments of 3s duration, binned frequency resolution of 2.66 Hz,
     ### starting every 0.5(ish) seconds apart
     ### details in comments for rxte_pvalues()
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
-                                      setlc=True, freq=625.0)
+        giantflare.search_singlepulse(tnew, nsteps=nsteps, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+                                      setlc=True, freq=624.0)
 
     ### make an empty array of zeros
-    savg_nosig = np.zeros(15)
+    savg_nosig = np.zeros(10)
 
     ### these are the cycles without the strongest signal in them
-    cycles = [0,1,2,3,4,5,8]
+    cycles = [0,1,2,3,4,5,7,8]
 
     ### loop over cycles and powers at the same phase for these cycles
     for c in cycles:
-        savg_nosig += np.array(savg[(c*15):((c+1)*15)])
+        savg_nosig += np.array(savg[(c*nsteps):((c+1)*nsteps)])
 
     ### divide by number of cycles
     savg_nosig = savg_nosig/np.float(len(cycles))
+    savg_nosig = savg_nosig[0]
+    print("power in the seven cycles w/out signal: " + str(savg_nosig))
 
-    ### load simulations
-    savgall_sims = gt.getpickle("1806_rxte_tseg=3s_dt=0.5s_df=2.66hz_30000sims_savgall.dat")
-    savgall_sims = np.transpose(savgall_sims)
+    ### find all datafiles with string froot_in in their filename
+    savgfiles = glob.glob("%s*"%froot_in)
 
+    savgall_sims = []
+    for f in savgfiles:
+        savgtemp = np.loadtxt(f)
+        print("np.shape(savgtemp): " + str(np.shape(savgtemp)))
+        savgall_sims.extend(savgtemp)
+
+    print("np.shape(savg_sims): " + str(np.shape(savgtemp)))
     savg_nosig_sims = []
 
     for s in savgall_sims:
-        stemp = np.zeros(15)
+        stemp = 0
         for c in cycles:
-            stemp += np.array(s[(c*15):((c+1)*15)])
+            #print("len(stemp) " + str(len(stemp)))
+            stemp += np.array(s[c])
+            #print("stemp: " + str(stemp))
 
         stemp = stemp/np.float(len(cycles))
 
@@ -384,13 +399,107 @@ def periodogram_nosignal():
 
     savg_nosig_sims = np.array(savg_nosig_sims)
 
-    n_sig = np.where(savg_nosig_sims.flatten() >= max(savg_nosig))
+    savg_nosig_sims_sorted = np.sort(savg_nosig_sims)
+    print(np.shape(savg_nosig_sims_sorted))
 
-    pval = np.float(len(n_sig))/np.float(np.max(np.shape(savg_nosig_sims)))
+    n_sig = savg_nosig_sims_sorted.searchsorted(np.max(savg_nosig))
 
-    return pval
+    pval = np.float(len(savg_nosig_sims)-n_sig)/np.float(np.max(np.shape(savg_nosig_sims)))
 
-######## SECOND BIT: RHESSI ANALYSIS
+    return pval, savg_nosig_sims_sorted
+
+
+def rxte_qpo_sims_singlecycle(nsims=100, froot="sgr1806_rxte"):
+
+    finesteps = int((1.0/0.132)/0.1)
+    coarsesteps = 10
+
+    tnew = load_rxte_data()
+
+    tstart_all = []
+    amp_all = [3]
+
+    freq_all = [626.5 for t in tstart_all]
+    randomphase_all = [True for t in tstart_all]
+
+    length_all = [0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+    nqpo = len(tstart_all)
+    qpoparams = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
+        zip(freq_all, amp_all, tstart_all, randomphase_all, length_all)]
+
+    lcsimall, savgall, pssimall = giantflare.make_qpo_simulations(tnew, nqpo, qpoparams, nsims=nsims, tcoarse=0.01,
+                                              tfine=0.5/1000.0, freq=624.0, set_analysis=False, set_lc=True)
+
+    savgall_coarsesteps, savgall_finesteps = [], []
+
+
+
+
+    for lc in lcsimall:
+        lcall, psall, mid_coarse, savg_coarse, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew, nsteps=coarsesteps, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+
+        lcall, psall, mid_fine, savg_file, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew, nsteps=finesteps, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+
+
+
+    return
+
+
+def rxte_highres():
+
+    ### load RXTE data
+    tnew = load_rxte_data()
+
+    dt = 0.1
+    nsteps = int((1.0/0.132)/dt)
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = giantflare.search_singlepulse(tnew, nsteps=nsteps,tseg=3.0,
+                                                                                            df=2.66, fnyquist=1000.0,
+                                                                                            stack=None, setlc=True,
+                                                                                            freq=624.0)
+
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    colours= ["black", "red", "cyan", "orange", "mediumseagreen", "magenta", "blue", "grey", "yellow"]
+    for i in range(9):
+        plot(mid[i*nsteps+int(nsteps/2):(i+1)*nsteps+int(nsteps/2)]-mid[i*nsteps+int(nsteps/2)],
+             savg[i*nsteps+int(nsteps/2):(i+1)*nsteps+int(nsteps/2)], lw=3, linestyle="steps-mid",
+             color=colours[i],label="cycle %i"%i)
+
+        plt.hlines(2.0, 0.0,7.575757, lw=7, color="black", linestyle="dashed", label="average noise level")
+        axis([0,1.0/0.132, 0, 12])
+        legend(prop={"size":16})
+        xlabel("Phase (in periods)", fontsize=18)
+        ylabel("Averaged Leahy Power", fontsize=18)
+
+        title("Leahy Power versus rotational phase for all nine cycles")
+        savefig("sgr1806_rxte_phaseplot.png", format="png")
+        close()
+
+
+    minind = tnew.searchsorted(235.4792253970644)
+    maxind = tnew.searchsorted(235.4792253970644+2*1.0/0.132)
+
+    tnew_small = tnew[minind:maxind]
+
+    dt = 1.0/624.5
+    nsteps = (1.0/0.132)/dt
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew_small, nsteps=nsteps,tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=624.0)
+
+    return mid, savg
+
+########################################################################################################################
+######## SECOND BIT: RHESSI ANALYSIS ###################################################################################
+########################################################################################################################
 
 def load_rhessi_data(datadir="./", tstart=80.0, tend=236.0, climits=[100.0, 200.0], seglimits=[0.0,7.0]):
     """
@@ -620,7 +729,7 @@ def rhessi_qpo_sims_allcycles(nsims=1000, froot="1806_rhessi"):
     amp_all = [0.1 for t in tstart_all]
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [False for t in tstart_all]
-    length_all = [1.0 for t in tstart_all]
+    length_all = [2.0 for t in tstart_all]
 
     nqpo = len(tstart_all)
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
@@ -646,7 +755,7 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
     amp_all = [0.1 for t in tstart_all]
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
-    length_all = [1.0 for t in tstart_all]
+    length_all = [2.0 for t in tstart_all]
 
     nqpo = len(tstart_all)
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
@@ -659,12 +768,12 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
 def rhessi_qpo_sims_singlecycle(nsims=1000, froot="1806_rhessi"):
 
     tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
-    amp_all = [0.1, 0.2, 0.05, 0.05, 0.05, 0.05, 0.05]
+    amp_all = [0.2, 0.4, 0.1, 0.1, 0.1, 0.1, 0.1]
 
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
 
-    length_all = [0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]
+    length_all = [0.5, 0.5, 2.0, 2.0, 2.0, 2.0, 2.0]
 
     nqpo = len(tstart_all)
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
@@ -739,8 +848,8 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
     return
 
 
-def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="1806_rhessi",
-                           froot_sims="allcycle"):
+def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="sgr1806_rhessi",
+                           froot_sims="allcycles"):
 
     ### if tnew isn't given, read in:
     tnew = load_rhessi_data()
@@ -774,16 +883,16 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
         ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
         ### the index of the power that corresponds to the observed one to compute p-value
-        maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
+        #maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
         ### transpose maxp, such that it's of the shape [nsims, ncycles]
-        maxp_sorted = np.transpose(maxp_all)
+        #maxp_sorted = np.transpose(maxp_all)
 
-        print("shape(maxp_all) " + str(np.shape(maxp_all)))
+        print("shape(maxp_sorted) " + str(np.shape(maxp_all)))
 
         ### load fake data, i.e. simulations *WITH* qpo
         qpofiles = glob.glob("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
         print("qpofiles: " + str(qpofiles))
-        print("%s_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+        print("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
 
         pvals_all, pvals_data, pvals_hist_all = [], [], []
         ### allow for qpo simulations to be broken up into several parts
@@ -801,8 +910,11 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
                 ### these are the simulations WITHOUT QPO
             sims = maxp_all[:,i]
+            sims = np.sort(sims)
             len_sims = np.float(len(sims))
             print("len_sims %i" %len_sims)
+            print("sims[0:10] " + str(sims[0:10]))
+            print("sims[-10:] " + str(sims[-10:]))
 
 
             ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
@@ -820,7 +932,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
             pvals_hist.append(h[::-1])
 
         print("shape(pvals): " + str(np.shape(pvals)))
-
+        print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
 
         pvals_all.append(pvals)
         pvals_hist_all.append(pvals_hist)
@@ -833,9 +945,9 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
         np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals)
 
-        ax = fig.add_subplot(2,2,k)
+        ax = fig.add_subplot(2,2,k+1)
         ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
-        ax.set_aspect(4)
+        ax.set_aspect(3)
         print('len(pvals_data): ' + str(len(pvals_data)))
         scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
                 edgecolor="cyan", marker="v")
@@ -847,7 +959,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
     savefig("%s_%s_pvals_sims.png"%(froot_in, froot_sims), format="png")
     close()
 
-    return
+    return pvals_all, pvals_hist_all
 
 ######################################################################################################################
 ####### ALL PLOTS ####################################################################################################
@@ -909,10 +1021,11 @@ def plot_lightcurves(datadir="./"):
 
 
 def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
-                       nsims=10000, froot="sgr1806_rhessi"):
+                       nsims=10000):
 
     """
     Re-makes the p-value plot for the RHESSI data, without having to re-do the entire analysis.
+    Figure 4 of Huppenkothen et al, 2014
 
     filename: a string that has the file with the p-values
     tseg: a list of the segment lengths used for the various p-values
@@ -945,7 +1058,24 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
     legend(loc="upper right", prop={"size":16})
     axis([0,20,-4.2, 0.5])
     title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
-    savefig("%s_pvals.png"%froot, format="png")
+    savefig("f4.eps", format="eps")
     close()
 
     return
+
+
+
+def main():
+
+
+
+    return
+
+
+if __name__ == "__main__":
+
+
+
+
+
+    main()

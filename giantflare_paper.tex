@@ -73,7 +73,7 @@ All artificial signals we inject are at the same frequency as the observed signa
 
 \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=18cm]{lightcurves.eps}
+\includegraphics[width=18cm]{f1.eps}
 \caption{Light curves of both the RXTE data (left panel) and the RHESSI data (right panel) in the relevant energy ranges. Note that both light curves are plotted on the same (logarithmic) scale, showing the vastly different data quality between the two instruments. 
 The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for the RXTE data, left panel) and \citet{Watts06} (for the RHESSI data, right panel) are indicated by horizontal arrows.}
 \label{fig:lcs}
@@ -85,8 +85,8 @@ The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{1806_rxte_pvals.png}
-\caption{}
+\includegraphics[width=9cm]{f2.png}
+\caption{Probability of observing a signal at $625 \, \mathrm{Hz}$ in the {\it RXTE} data at least as high or higher than the observed power in dependence of the number of cycles averaged. For each data point, we extracted the maximum power from all (averaged) segments over the entire length of the searched part of the giant flare light curve, for both the observation and the simulated light curves. Errors on the p-values are derived from the theoretical approximation valid for small probabilities $\Delta p = \sqrt{p (1-p)/N}$, where $p$ is the $p-value$ and $N$ is the number of simulations. A smaller $p$-value corresponds to a higher significance: when averaging cycles, the signal actually becomes less significance, with a minimum for averaging two consecutive cycles. This indicates that the signal is likely only present in two cycles.}
 \label{fig:rxte_pvals}
 \end{center}
 \end{figure}
@@ -107,7 +107,7 @@ We search individual segments of $t_{\mathrm{set}} = 3 \, \mathrm{s}$ length, st
 \begin{figure*}[htbp]
 \begin{center}
 \includegraphics[width=\textwidth]{1806_rxte_lc_combined.png}
-\caption{Probability of observing a signal at $625 \, \mathrm{Hz}$ in the {\it RXTE} data at least as high or higher than the observed power in dependence of the number of cycles averaged. For each data point, we extracted the maximum power from all (averaged) segments over the entire length of the searched part of the giant flare light curve, for both the observation and the simulated light curves. Errors on the p-values are derived from the theoretical approximation valid for small probabilities $\Delta p = \sqrt{p (1-p)/N}$, where $p$ is the $p-value$ and $N$ is the number of simulations. A smaller $p$-value corresponds to a higher significance: when averaging cycles, the signal actually becomes less significance, with a minimum for averaging two consecutive cycles. This indicates that the signal is likely only present in two cycles.}
+\caption{}
 \label{fig:rxte_lc_combined}
 \end{center}
 \end{figure*}
@@ -131,7 +131,7 @@ For each segment we computed the periodogram and extracted the power at $626.5 \
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{1806_rhessi_pvalues.png}
+\includegraphics[width=9cm]{f4.eps}
 \caption{RHESSI data: p-values for measuring a power at $626.5\, \mathrm{Hz}$ in any of the segments at least as high or higher than the ensemble of powers derived from all segments from 10000 simulations. We show these p-values in dependence of the number of phase-matched periodograms averaged to construct the power in that segment, for different segment lengths between $0.5$ and $2.0$ seconds. The p-values for the shortest segments indicates that there is a significant signal ($p < 0.01$) even when averaging only two cycles together, while averaging in more cycles seems to supply no additional signal. For longer segments, averaging in more cycles increases the significance, indicating that the signal is longer-lived.}
 \label{fig:rhessi_pvalues}
 \end{center}
