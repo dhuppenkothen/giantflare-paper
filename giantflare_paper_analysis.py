@@ -409,20 +409,45 @@ def periodogram_nosignal(froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_
     return pval, savg_nosig_sims_sorted
 
 
+def compute_quantiles(savg_all, quantiles=[0.05, 0.5, 0.95]):
+    """
+    Quick-and-dirty quantile calculation for simulated light curves.
+    Used in rxte_qpo_sims_singlecycle below.
+
+    savg_all needs to be of shape [nsims, nbins], where nsims is the number of simulated
+    light curves, and nbins is the number of bins within each light curve.
+    """
+
+    ### number of simulations
+    nsims = len(savg_all)
+
+    q_sims = np.array(quantiles)*nsims
+    print("q_sims: " + str(q_sims))
+
+    sq_all = []
+    for s in np.transpose(savg_all):
+        s_sort = np.sort(s)
+
+        sq = [s_sort[int(i)] for i in q_sims]
+        sq_all.append(sq)
+
+    return np.array(sq_all)
+
+
 def rxte_qpo_sims_singlecycle(nsims=100, froot="sgr1806_rxte"):
 
-    finesteps = int((1.0/0.132)/0.1)
     coarsesteps = 10
+    finesteps = 750 ### starting approx every 0.01s apart
 
     tnew = load_rxte_data()
 
-    tstart_all = []
-    amp_all = [3]
+    tstart_all = [211.5, 241.6]
+    amp_all = [0.1, 0.2]
 
-    freq_all = [626.5 for t in tstart_all]
-    randomphase_all = [True for t in tstart_all]
+    freq_all = [625.0 for t in tstart_all]
+    randomphase_all = [False for t in tstart_all]
 
-    length_all = [0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]
+    length_all = [0.5, 0.5]
 
     nqpo = len(tstart_all)
     qpoparams = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
@@ -433,21 +458,97 @@ def rxte_qpo_sims_singlecycle(nsims=100, froot="sgr1806_rxte"):
 
     savgall_coarsesteps, savgall_finesteps = [], []
 
+    pvals_all, mid_coarse_all, mid_fine_all, savg_coarse_all, savg_fine_all = [], [], [], [], []
+    ### load simulated maxpowers without QPO signal
+    maxp_all = np.loadtxt("sgr1806_rxte_simulated_maxpowers.txt")
+    print("shape(maxp_all): " + str(np.shape(maxp_all)))
 
 
+    for j,lc in enumerate(lcsimall):
 
-    for lc in lcsimall:
+        print("I am on simulation %i"%j)
+        ### first step: compute p-values for simulations
         lcall, psall, mid_coarse, savg_coarse, xerr, ntrials, sfreqs, spowers = \
-            giantflare.search_singlepulse(tnew, nsteps=coarsesteps, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+            giantflare.search_singlepulse(lc, nsteps=coarsesteps, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+        mid_coarse_all.append(mid_coarse)
+        savg_coarse_all.append(savg_coarse)
+
+        allstack = giantflare.make_stacks(savg_coarse, 10, 10)
+
+        pvals = []
+        for i,a in enumerate(allstack):
+
+            maxp = np.max(a)
+
+            sims = np.sort(maxp_all[:,i])
+            print("len(sims): " + str(len(sims)))
+
+
+            max_ind = sims.searchsorted(maxp)
+
+            pvals.append(float(len(sims)-max_ind)/float(len(sims)))
+
+        pvals_all.append(pvals)
+
+
+        minind = np.array(lc.time).searchsorted(236.0)
+        maxind = np.array(lc.time).searchsorted(236.0+(1.0/0.132)*2)
+
+        lcnew = lightcurve.Lightcurve(lc.time[minind:maxind], counts=lc.counts[minind:maxind])
+
+        lcall, psall, mid_fine, savg_fine, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(lcnew, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+        mid_fine_all.append(mid_fine)
+        savg_fine_all.append(savg_fine)
+
+
+    ### real data, plot of strongest cycle:
+
+    minind = tnew.searchsorted(236.0)
+    maxind = tnew.searchsorted(236.0+(1.0/0.132)*2)
+
+    tnew_small = tnew[minind:maxind]
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
                                           setlc=True, freq=624.0)
 
-        lcall, psall, mid_fine, savg_file, xerr, ntrials, sfreqs, spowers = \
-            giantflare.search_singlepulse(tnew, nsteps=finesteps, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
-                                          setlc=True, freq=624.0)
+    print("shape(savg_fine_all: " + str(np.shape(savg_fine)))
 
+    ### compute quantiles:
+    sq_all = compute_quantiles(savg_fine_all, quantiles=[0.05,0.5,0.95])
 
+    print("len(mid): " + str(len(mid_fine_all[0])))
 
-    return
+    np.savetxt("1806_rxte_strongestcycle_quantiles.txt", sq_all)
+    np.savetxt("1806_rxte_strongestcycle_midbins.txt", mid_fine_all[0])
+    np.savetxt("1806_rxte_strongestcycle_savgfine.txt", savg_fine_all)
+
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    ### plot data
+    plot(mid, savg, lw=2, color="black", label="observed data")
+
+    ### plot mean from simulations:
+    plot(mid_fine_all[0], sq_all[:,1], lw=2, color="red", label="mean of simulations")
+
+    ### plot quantiles as shaded area:
+    fill_between(mid_fine_all[0], sq_all[:,0], sq_all[:,2], color="red", alpha=0.6, label="95\% quantiles from simulations")
+
+    maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
+
+    legend(loc="upper right", prop={"size":16})
+    axis([238.0, 246.0, 0, maxy+2])
+    xlabel("Time since trigger [s]", fontsize=20)
+    ylabel("Leahy Power", fontsize=20)
+
+    savefig("sgr1806_rxte_strongestcycle_powers.png", format="png")
+    close()
+
+    return mid_coarse_all, savg_coarse_all, mid_fine_all, savg_fine_all, pvals_all
 
 
 def rxte_highres():
@@ -457,6 +558,7 @@ def rxte_highres():
 
     dt = 0.1
     nsteps = int((1.0/0.132)/dt)
+
 
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = giantflare.search_singlepulse(tnew, nsteps=nsteps,tseg=3.0,
                                                                                             df=2.66, fnyquist=1000.0,
@@ -768,12 +870,12 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
 def rhessi_qpo_sims_singlecycle(nsims=1000, froot="1806_rhessi"):
 
     tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
-    amp_all = [0.2, 0.4, 0.1, 0.1, 0.1, 0.1, 0.1]
+    amp_all = [0.3, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2]
 
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
 
-    length_all = [0.5, 0.5, 2.0, 2.0, 2.0, 2.0, 2.0]
+    length_all = [1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0]
 
     nqpo = len(tstart_all)
     qpoparams_all = [{"freq":f, "amp":a, "tstart":t, "randomphase":r, "length":l} for f,a,t,r,l in \
