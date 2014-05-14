@@ -319,6 +319,8 @@ def rxte_simulations_results(tnew=None, froot_in="test", froot_out="test", plotd
 
     pvals = np.array(pvals)
 
+
+
     ### Compute theoretical error on p-values
     pvals_error = pvalues_error(pvals, len(sims))
 
@@ -747,6 +749,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
     pvals_all, perr_all = [], []
 
+    print("froot_in: %s" %froot_in)
 
     fig = figure(figsize=(24,18))
     subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
@@ -767,14 +770,8 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
         allstack_data.append(allstack)
 
-        ### find all datafiles with string froot_in in their filename
-        print("%s*_tseg=%.1f*"%(froot_in,tseg))
-        savgfiles = glob.glob("%s*_tseg=%.1f*_df=*"%(froot_in,tseg))
+        maxp_all = np.loadtxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_in, tseg))
 
-        print("Simulation files: " + str(savgfiles))
-
-
-        maxp_all = np.loadtxt("%s_tseg=%.1f_simulated_maxpowers.txt")
         ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
         ### the index of the power that corresponds to the observed one to compute p-value
         maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
@@ -784,7 +781,9 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
         ### load fake data, i.e. simulations *WITH* qpo
-        qpofiles = glob.glob("%s_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+        qpofiles = glob.glob("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+        print("qpofiles: " + str(qpofiles))
+        print("%s_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
 
         pvals_all, pvals_data, pvals_hist_all = [], [], []
         ### allow for qpo simulations to be broken up into several parts
@@ -797,38 +796,47 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
             allstack_qpo = np.array(allstack_qpo)
 
-            pvals, pvals_hist = [], []
-            for i in xrange(len(allstack)):
+        pvals, pvals_hist = [], []
+        for i in xrange(len(allstack)):
 
                 ### these are the simulations WITHOUT QPO
-                sims = maxp_all[:,i]
-                len_sims = np.float(len(sims))
-                print("len_simsL %i" %len_sims)
+            sims = maxp_all[:,i]
+            len_sims = np.float(len(sims))
+            print("len_sims %i" %len_sims)
 
-                if j == 0:
-                    ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
-                    pvals_data.append((len_sims-ind_data)/len_sims)
 
-                ### find index in sorted simulations without QPO that correspond to the observed maximum power
-                ### for the simulated light curve with QPO
-                ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
-                pvals_temp = (len_sims-ind_temp)/len_sims
+            ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
+            pvals_data.append((len_sims-ind_data)/len_sims)
 
-                pvals.append(pvals_temp)
+            ### find index in sorted simulations without QPO that correspond to the observed maximum power
+            ### for the simulated light curve with QPO
+            ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
+            pvals_temp = (len_sims-ind_temp)/len_sims
 
-                h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-5.0, 0.0])
-                pvals_hist.append(h[::-1])
+            pvals.append(pvals_temp)
 
-            pvals_all.append(pvals)
-            pvals_hist_all.append(pvals_hist)
 
-        pvals_all = np.array(pvals_all)
+            h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-5.0, 0.0])
+            pvals_hist.append(h[::-1])
 
-        np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals_all)
+        print("shape(pvals): " + str(np.shape(pvals)))
+
+
+        pvals_all.append(pvals)
+        pvals_hist_all.append(pvals_hist)
+
+        #pvals_all = np.array(pvals_all)
+        #print("shape pvals_all: " + str(np.shape(pvals)))
+        #print("froot_in %s" %froot_in)
+        #print("froot_sims: %s" %froot_sims)
+        #print("tseg: %f" %tseg)
+
+        np.savetxt("%s_%s_tseg=%.1f"%(froot_in, froot_sims, tseg), pvals)
 
         ax = fig.add_subplot(2,2,k)
-        ax.imshow(np.transpose(pvals_hist_all), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
+        ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -5.0,0.0])
         ax.set_aspect(4)
+        print('len(pvals_data): ' + str(len(pvals_data)))
         scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
                 edgecolor="cyan", marker="v")
         axis([0,len(allstack), -5.0, 0.0])
@@ -836,7 +844,7 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
         title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
 
-    savefig("%s_%s_pvals_sims.png", format="png")
+    savefig("%s_%s_pvals_sims.png"%(froot_in, froot_sims), format="png")
     close()
 
     return
