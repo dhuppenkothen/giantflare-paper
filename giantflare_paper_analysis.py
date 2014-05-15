@@ -525,9 +525,12 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
     np.savetxt("1806_rxte_strongestcycle_quantiles.txt", sq_all)
     np.savetxt("1806_rxte_strongestcycle_midbins.txt", mid_fine_all[0])
     np.savetxt("1806_rxte_strongestcycle_savgfine.txt", savg_fine_all)
+    np.savetxt("1806_rxte_strongestcycle_pvals_all.txt", pvals_all)
 
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
+    fig = figure(figsize=(24,9))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+    ax = fig.add_subplot(121)
 
     ### plot data
     plot(mid, savg, lw=2, color="black", label="observed data")
@@ -545,8 +548,28 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
     xlabel("Time since trigger [s]", fontsize=20)
     ylabel("Leahy Power", fontsize=20)
 
+    ax2 = fig.add_subplot(122)
+    pvals_hist = []
+    for i in range(10):
+        p = pvals_all[:,i]
+        h,bins = np.histogram(np.log10(p), bins=15, range=[-5.1,0.0])
+        pvals_hist.append(h[::-1])
+
+    ax2.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.5,10.5,-5.1,0.0])
+    ax2.set_aspect(2)
+
+    pvals_data = loadtxt("sgr1806_rxte_pvals_all.txt")
+
+    plot(np.arange(10)+1, np.log10(pvals_data), "-o", lw=3, color="cyan", ms=10)
+
+    axis([0.5,10.5,-5.1,0.0])
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("log(p-value)", fontsize=20)
+
     savefig("sgr1806_rxte_strongestcycle_powers.png", format="png")
     close()
+
+
 
     return mid_coarse_all, savg_coarse_all, mid_fine_all, savg_fine_all, pvals_all
 
@@ -1159,22 +1182,26 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
 
     mid_fine = np.loadtxt("%s_midbins.txt"%froot)
     sq_all = np.loadtxt("%s_quantiles.txt"%froot)
+    pvals_all = np.loadtxt("%s_pvals_all.txt"%froot)
 
     minind = tnew.searchsorted(236.0)
     maxind = tnew.searchsorted(236.0+(1.0/0.132)*2)
 
     tnew_small = tnew[minind:maxind]
 
-    finesteps = 250
+    finesteps = int((1.0/0.132)/0.01)
     print("finesteps: %.4f" %finesteps)
 
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
             giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
                                           setlc=True, freq=624.0)
 
+#    fig = figure(figsize=(24,9))
     fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
+    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.95, wspace=0.1, hspace=0.2)
 
+#    ax = fig.add_subplot(121)
+    ax = fig.add_subplot(111)
 
     ### plot quantiles as shaded area:
     fill_between(mid_fine, sq_all[:,0], sq_all[:,2], color="lightcoral", label="95\% quantiles from simulations",
@@ -1184,7 +1211,7 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
     plot(mid_fine, sq_all[:,2], lw=2, color="red")
 
     ### plot data
-    plot(mid, savg, lw=3, color="black", label="observed data")
+    plot(mid, savg, lw=3, color="black", linestyle="steps-mid", label="observed data")
 
 
     ### plot mean from simulations:
@@ -1195,10 +1222,29 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
     maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
 
     legend(loc="upper right", prop={"size":16})
-    #axis([238.0, 246.0, 0, maxy+2])
+    axis([238.0, 246.0, 0, maxy+2])
     xlabel("Time since trigger [s]", fontsize=20)
     ylabel("Leahy Power", fontsize=20)
 
+
+
+#    ax2 = fig.add_subplot(122)
+#    pvals_hist = []
+#    for i in range(10):
+#        p = pvals_all[:,i]
+#        h,bins = np.histogram(np.log10(p), bins=15, range=[-5.1,0.0])
+#        pvals_hist.append(h[::-1])
+
+#    ax2.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.5,10.5,-5.1,0.0])
+#    ax2.set_aspect(2)
+
+#    pvals_data = loadtxt("sgr1806_rxte_pvals_all.txt")
+
+#    plot(np.arange(10)+1, np.log10(pvals_data), "-o", lw=3, color="cyan", ms=10)
+
+#    axis([0.5,10.5,-5.1,0.0])
+#    xlabel("Number of averaged cycles", fontsize=20)
+#    ylabel("log(p-value)", fontsize=20)
 
     savefig("f3.eps", format="eps")
     close()
@@ -1252,13 +1298,13 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
 
 
 
-def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0, 1.0]):
+def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0]):
 
     tnew = load_rhessi_data()
 
 
 
-    for f,namestr in enumerate(["allcycle", "allcycle_randomised", "singlecycle"]):
+    for f,namestr in enumerate(["allcycles", "allcycles_randomised", "singlecycle"]):
 
         fig = figure(figsize=(24,18))
         subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
@@ -1278,9 +1324,10 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all = [2.0, 1
             allstack = giantflare.make_stacks(savg, 19, 30)
 
 
-            maxp_all = np.loadtxt("%sgr1806_rhessi_tseg=%.1f_simulated_maxpowers.txt"%(tseg))
+            maxp_all = np.loadtxt("sgr1806_rhessi_tseg=%.1f_simulated_maxpowers.txt"%(tseg))
 
-            pvals = np.loadtxt("%sg1806_rhessi_%s_tseg=%.1f"%(namestr, tseg))
+            pvals = np.loadtxt("sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
+            print("pvals file: sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
 
             pvals_data, pvals_hist = [], []
             for i in xrange(len(allstack)):
@@ -1289,33 +1336,33 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,1.5,2.0,2.5], df_all = [2.0, 1
                 sims = maxp_all[:,i]
                 sims = np.sort(sims)
                 len_sims = np.float(len(sims))
-                print("len_sims %i" %len_sims)
-                print("sims[0:10] " + str(sims[0:10]))
-                print("sims[-10:] " + str(sims[-10:]))
+                #print("len_sims %i" %len_sims)
+                #print("sims[0:10] " + str(sims[0:10]))
+                #print("sims[-10:] " + str(sims[-10:]))
 
 
                 ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
                 pvals_data.append((len_sims-ind_data)/len_sims)
 
 
-                h, bins = np.histogram(np.log10(pvals[i]), bins=30, range=[-4.1, 0.0])
+                h, bins = np.histogram(np.log10(pvals[i]), bins=10, range=[-4.1, 0.0])
                 pvals_hist.append(h[::-1])
 
-            print("shape(pvals): " + str(np.shape(pvals)))
-            print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
+            #print("shape(pvals): " + str(np.shape(pvals)))
+            #print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
 
             ax = fig.add_subplot(2,2,k+1)
-            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -4.1,0.0])
+            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.0,len(allstack), -4.1,0.0])
             ax.set_aspect(3)
             print('len(pvals_data): ' + str(len(pvals_data)))
-            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
-                    edgecolor="cyan", marker="v")
+            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=2, facecolor="LightGoldenRodYellow",
+                    edgecolor="cyan", marker="v", s=50)
             axis([0,len(allstack), -4.1, 0.0])
-            xlabel("Number of averaged cycles", fontsize=20)
-            ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
+            xlabel("Number of averaged cycles", fontsize=24)
+            ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=24)
             title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
 
-        savefig("f%i.eps"%f, format="eps")
+        savefig("f%i.eps"%(f+5), format="eps")
         close()
 
     return
