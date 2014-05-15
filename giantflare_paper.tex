@@ -1,6 +1,4 @@
-%\documentclass[useAMS,usenatbib,preprint2]{aastex}
 \documentclass{emulateapj}
-% \documentclass[12pt,preprint]{aastex}
 \usepackage{graphicx}
 \usepackage{subfigure}
 \usepackage{epsfig}
@@ -101,15 +99,6 @@ All artificial signals we inject are at the same frequency as the observed signa
 \label{sec:rxte_results}
 
 
-
-%%%%
-%%
-%
-% start at: 196.1 seconds after trigger
-% - 10 bins per cycle
-% - 40000 sims!
-%
-
 \citealt{Strohmayer06} reported a detection of a strong QPO when averaging nine consecutive cycles to a significance of $p < 1.1 \times 10^{-7}$ single-trial, or $10^{-5}$ trial-corrected, and a fractional rms amplitude of $8.5\%$ (see Figure \ref{fig:lcs} for light curves and arrows indicating the part of the giant flare where the QPO was detected in both the \rxte and \rhessi data). These values are based on comparing the observed power to a theoretical Poisson distribution after dividing out a model fit for the low-frequency powers. They also report the detection of the same feature in an averaged periodogram of specific two cycles from the segment where the QPO was found originally with $p < 1.1 \times 10^{-6}$ single-trial and a fractional rms amplitude of $18.3\%$. A third averaged periodogram six cycles before the previous one showed a signal to $p < 4.4 \times 10^{-6}$ (single-trial), but no trial-corrected p-value was calculated for either of the last two reported detections, thus estimating the actual significance of these latter two signals, as compared to the nine-cycle average, is impossible.
 
 We first repeated the analysis from \citealt{Strohmayer06} in order to reproduce their results, paying special attention to the overall number of cycles during which the signal was present, as well as the duration of the presence of the QPO in any individual cycle.
@@ -157,7 +146,7 @@ While previous studies constrained themselves to a single (arbitrary) segment le
 \end{figure*}
 We subdivided each rotational cycle of the neutron star into $N_\mathrm{s} = 30$ segments, such that they start every $\Delta t = 7.5477/30 = 0.2534 \, \mathrm{s}$ apart, and overlap for $\delta t_\mathrm{seg} - 0.2534 \, \mathrm{s}$. Again, we use a higher number of segments per cycle to account for the poorer quality of the \rhessi data, and the fact we search shorter segments: for $15$ segments per cycle, the shortest segments will not overlap, and a signal split between two segments may not be detected at all.
 For each segment we computed the periodogram, extracted the power at $626.5 \, \mathrm{Hz}$, and compared this power to those at the same frequency from segments of 10000 simulated light curves with the giant flare pulse profile, but smoothed out such that the QPO is removed. We ran fewer simulations for the \rhessi data as compared to the \rxte data largely because the signal itself is less significant, thus requires fewer simulations to constrain the p-value robustly. 
-The p-values for a simulated power in any segment to be higher than the power in any observed segment is shown in Figure \ref{fig:rhessi_pvalues}. If the signal is present intermittently, then the significance should decrease with increasing number of averaged cycles, since any additional cycle included in the average will only supply noise. On the other hand, if the signal is long-lived and persists over many cycles, then averaging more cycles should make the observed signal more significant, and the p-value should decrease with an increasing number of averaged cycles. %Interestingly, both behaviours are observed: for the shortest segments with $0.5\, \mathrm{s}$ length, the power observed from the giant flare is significant to $p < 0.01$ when averaging only two cycles, and remains roughly at this level or rises again as more cycles are averaged, indicating that these cycles do not supply any power to the averaged periodogram. On the other hand, for longer segments, the signal becomes more significant as more cycles are included in the averaged periodogram. One possible explanation for this behaviour is a signal that shifts in phase over the duration of the giant flare: if the QPO appears in many cycles, but is short-lived in each cycle ($<1.0 \, \mathrm{s}$) and the QPO onset moves in phase with each cycle, then the QPOs from several cycles would only add up and produce a stronger QPO in the longer segments, but not in the shorter segments, where they are distributed in different segments for different phases. 
+The p-values for a simulated power in any segment to be higher than the power in any observed segment is shown in Figure \ref{fig:rhessi_pvalues}. If the signal is present intermittently, then the significance should decrease with increasing number of averaged cycles, since any additional cycle included in the average will only supply noise. On the other hand, if the signal is long-lived and persists over many cycles, then averaging more cycles should make the observed signal more significant, and the p-value should decrease with an increasing number of averaged cycles.
 
 Interestingly, the highest significance for the QPO signal is not for an average of $19$ cycles, as reported in \citet{Watts06}, but rather when averaging very few cycles: averaging $3$ or $4$ cycles results in a highly significant detection, whereas adding further cycles first decreases the significance, indicating that noise is being added. For averages of $10$ cycles or more, the p-value drops again. This could be an indication for intermittency of the QPO signal in the \rhessi data as well.
 
@@ -187,19 +176,6 @@ As in the preceding section, we removed any variability above $100 \,\mathrm{Hz}
 We injected a strong, short signal (duration $1.0 \,\mathrm{s}$, fractional rms amplitude $0.4$) into the cycle where the highest power at $626.5 \,\mathrm{Hz}$ is observed in the \rhessi data, and a somewhat weaker sinusoidal signal (same duration, fractional rms amplitude $0.3$) in the preceding cycle.
 Additionally, we introduced a longer, but weaker signal of $2\,\mathrm{s}$ duration and a fractional rms amplitude of $0.2$ into cycles $14$ to $18$, to mimic the down-ward trend of the p-values when averaging many cycles. We the simulated $600$ realisations from this model using a Poisson distribution to account for photon counting statistics in the detector.
 This model qualitatively reproduces the trends observed in the p-values for all four segment lengths tested (see \ref{fig:rhessi_sims3_pvalues}), but overestimates the significance of detection for the longest segments searched. Compared with a model that includes a QPO in all 19 cycles, an intermittent QPO seems to present a qualitatively better fit to the observations. However, we note once again that there is a large scatter in p-values, indicating that it is actually very difficult to draw any quantitative conclusions from the \rhessi data at all. 
-
-
-
-%    tstart_all = [99.95283222, 107.52754498, 190.86196136,  198.43483257, 206.01998615,  213.58804893,  221.17355442]
-%    amp_all = [0.3, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2] 
- 
-%    freq_all = [626.5 for t in tstart_all]
-%    randomphase_all = [True for t in tstart_all]
-
-%    length_all = [1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0]
-
-
-
 
 
 \section{Discussion}
