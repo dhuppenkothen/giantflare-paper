@@ -28,9 +28,12 @@ import generaltools as gt
 import numpy as np
 import cPickle as pickle
 import glob
+import scipy.interpolate
 
 import lightcurve
 import giantflare
+
+
 
 from pylab import *
 import matplotlib.cm as cm
@@ -1428,6 +1431,262 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 
         close()
 
     return
+
+def plot_averaging_example():
+
+    tnew = load_rxte_data(tstart=198.0)
+    tend = tnew[0]+3.0*7.5478
+
+    tend_ind = tnew.searchsorted(tend)
+
+    tnew = tnew[:tend_ind]
+
+    lc = lightcurve.Lightcurve(tnew, timestep=0.01)
+
+    fig = figure(figsize=(18,9))
+    subplots_adjust(top=0.9, bottom=0.12, left=0.08, right=0.95, wspace=0.1, hspace=0.2)
+    ax = fig.add_subplot(111)
+
+
+    xt = ((lc.time - lc.time[0])/7.54577)*2.0*np.pi
+
+    plot(xt, lc.countrate/1000.0, lw=2, color="black", linestyle="steps-mid")
+    axis([0.0, 6.0*np.pi, 0.0, 9.0])
+
+    ticks = np.arange(np.pi, 6.0*np.pi, np.pi)
+    labels = [r"$%i\pi$"%(i+1) for i in range(len(ticks))]
+    xticks(ticks, labels)
+
+    ### NEED TO SET XTICKSLABELS PROPERLY
+    xlabel("Phase ", fontsize=26)
+    ylabel(r"Count rate [$10^{3} \, \mathrm{counts}\, \mathrm{s}^{-1}$]", fontsize=26)
+
+    tstart = [2.5, 3.2]
+    color=["navy", "darkred"]
+
+    ylen = 0
+    y_offset = 0.1
+
+    for t,c in zip(tstart, color):
+        ### first set of shaded areas
+        x1 = np.arange(30)/10.0+t
+        x2 = np.arange(30)/10.0+t+2.0*np.pi
+        x3 = np.arange(30)/10.0+t+4.0*np.pi
+
+        ybottom = np.zeros(len(x1))
+        ytop = 6.0*np.ones(len(x1))
+
+        fill_between(x1, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x2, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x3, ybottom, ytop, color=c, alpha=0.6)
+
+        vlines(t+1.5, 6.0, 6.7+ylen, lw=4, color=c)
+        vlines(t+1.0+2.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        hlines(6.7+ylen, t+1.5-0.015, t+1.0+2.0*np.pi+0.025, lw=4, color=c)
+        middlevx = ((t+1.0+2.0*np.pi) - (t+1.5))/2.0 + t+1.5
+        vlines(middlevx, 6.7+ylen, 7.4+ylen, lw=4, color=c)
+        ax.text(middlevx-0.1,7.6+(ylen*3.0), r"$P_{\mathrm{avg,1}}$", verticalalignment='center',
+                horizontalalignment='center', color=c, fontsize=26)
+
+        vlines(t+2.0+2.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        vlines(t+1.5+4.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        hlines(6.7+ylen, t+2.0*np.pi+2.0-0.015, t+1.5+4.0*np.pi+0.025, lw=4, color=c)
+        middlevx = ((t+1.5+4.0*np.pi) - (t+2.0+2.0*np.pi))/2.0 + t+2.0+2.0*np.pi
+        vlines(middlevx, 6.7+ylen, 7.4+ylen, lw=4, color=c)
+        ax.text(middlevx-0.5, 7.35+(ylen*3.0), r"$P_{\mathrm{avg,2}}$", verticalalignment='bottom',
+                horizontalalignment='left', color=c, fontsize=26)
+
+
+        ylen += y_offset
+
+
+    savefig("analysis_figure1.png",format="png")
+    close()
+
+    return
+
+def make_analysis_schematic():
+
+    tnew = load_rxte_data(tstart=198.0)
+    tend = tnew[0]+3.0*7.5478
+
+    tend_ind = tnew.searchsorted(tend)
+
+    tnew = tnew[:tend_ind]
+
+    lc = lightcurve.Lightcurve(tnew, timestep=0.01)
+
+    ### coarse light curve
+    lccoarse = lightcurve.Lightcurve(tnew, timestep=0.1)
+    ### use interpolation routine in scipy to interpolate between data points, use linear interpolation
+    ### should be non-linear interpolation?
+    interpolated_countrate = scipy.interpolate.interp1d(lccoarse.time, lccoarse.countrate, "linear")
+
+    ### make light curve with right time resolution for analysis
+    lcnew = lightcurve.Lightcurve(tnew, timestep=0.01)
+    minind = lcnew.time.searchsorted(lccoarse.time[0])
+    maxind = lcnew.time.searchsorted(lccoarse.time[-1])
+
+    lcnew.time = lcnew.time[minind:maxind]
+    lcnew.counts = lcnew.counts[minind:maxind]
+    lcnew.countrate = lcnew.countrate[minind:maxind]
+
+    ### interpolate light curve to right resolution
+    countrate_new = interpolated_countrate(lcnew.time)
+    counts_new = countrate_new*0.01
+
+
+    fig = figure(figsize=(18,7))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.0, hspace=0.2)
+
+
+    ### Plot3: simulated light curves
+    #ax3 = fig.add_subplot(133)
+    ax3 = plt.subplot2grid((1,3),(0,2),rowspan=1)
+
+    cpoisson = np.array([np.random.poisson(cts) for cts in counts_new])
+    plot(((lcnew.time - lcnew.time[0])/7.5457)*2.0*np.pi, (cpoisson*100.0)/1000.0,
+         lw=1, color="black", linestyle="steps-mid")
+    axis([0.01, 6.0*np.pi-0.01, 0.03, 8.97])
+
+    ticks = np.arange(np.pi, 6.0*np.pi, np.pi)
+    labels = [r"$%i\pi$"%(i+1) for i in range(len(ticks))]
+    xticks(ticks, labels)
+    ### NEED TO SET XTICKSLABELS PROPERLY
+    #ylabel(r"Count rate [$10^{3} \, \mathrm{counts}\, \mathrm{s}^{-1}]", fontsize=24)
+
+    title("Simulated light curves")
+
+    tstart = [2.5, 3.2]
+    color=["navy", "darkred"]
+
+    ylen = 0
+    y_offset = 0.3
+
+    for t,c in zip(tstart, color):
+        ### first set of shaded areas
+        x1 = np.arange(30)/10.0+t
+        x2 = np.arange(30)/10.0+t+2.0*np.pi
+        x3 = np.arange(30)/10.0+t+4.0*np.pi
+
+        ybottom = np.zeros(len(x1))
+        ytop = 6.0*np.ones(len(x1))
+
+        fill_between(x1, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x2, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x3, ybottom, ytop, color=c, alpha=0.6)
+
+        vlines(t+1.5, 6.0, 6.5+ylen, lw=4, color=c)
+        vlines(t+1.0+2.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        hlines(6.5+ylen, t+1.5-0.09, t+1.0+2.0*np.pi+0.1, lw=4, color=c)
+        middlevx = ((t+1.0+2.0*np.pi) - (t+1.5))/2.0 + t+1.5
+        vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
+        ax3.text(middlevx-0.8+ylen*2.8,7.6+(ylen*1.2), r"$P_{\mathrm{sim,1}}$", verticalalignment='center',
+                horizontalalignment='center', color=c, fontsize=22)
+
+        vlines(t+2.0+2.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        vlines(t+1.5+4.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        hlines(6.5+ylen, t+2.0*np.pi+2.0-0.09, t+1.5+4.0*np.pi+0.1, lw=4, color=c)
+        middlevx = ((t+1.5+4.0*np.pi) - (t+2.0+2.0*np.pi))/2.0 + t+2.0+2.0*np.pi
+        vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
+        ax3.text(middlevx-2.1+ylen*2.8, 7.35+(ylen*1.2), r"$P_{\mathrm{sim,2}}$", verticalalignment='bottom',
+                horizontalalignment='left', color=c, fontsize=22)
+
+
+        ylen += y_offset
+
+    ### second panel: smoothed-out lightcurve
+    #ax2 = fig.add_subplot(132)
+    ax2 = plt.subplot2grid((1,3),(0,1),rowspan=1)
+
+
+    plot(((lcnew.time - lcnew.time[0])/7.5457)*2.0*np.pi, countrate_new/1000.0, lw=2, color="black")
+    axis([0.01, 6.0*np.pi-0.01, 0.03, 8.97])
+
+    ticks = np.arange(np.pi, 6.0*np.pi, np.pi)
+    labels = [r"$%i\pi$"%(i+1) for i in range(len(ticks))]
+    xticks(ticks, labels)
+
+    xlabel("Phase ", fontsize=24)
+    title("Smoothed light curve")
+    ### left panel: same as Figure above
+    #ax = fig.add_subplot(131)
+    ax = plt.subplot2grid((1,3),(0,0),rowspan=1)
+
+    xt = ((lc.time - lc.time[0])/7.54577)*2.0*np.pi
+
+    plot(xt, lc.countrate/1000.0, lw=1, color="black", linestyle="steps-mid")
+    axis([0.01, 6.0*np.pi-0.01, 0.03, 8.97])
+
+    ticks = np.arange(np.pi, 6.0*np.pi, np.pi)
+    labels = [r"$%i\pi$"%(i+1) for i in range(len(ticks))]
+    xticks(ticks, labels)
+
+    title("Original RXTE data")
+    ### NEED TO SET XTICKSLABELS PROPERLY
+    #xlabel("Phase ", fontsize=24)
+    ylabel(r"Count rate [$10^{3} \, \mathrm{counts}\, \mathrm{s}^{-1}]", fontsize=24)
+
+    tstart = [2.5, 3.2]
+    color=["navy", "darkred"]
+
+    ylen = 0
+    y_offset = 0.3
+
+    for t,c in zip(tstart, color):
+        ### first set of shaded areas
+        x1 = np.arange(30)/10.0+t
+        x2 = np.arange(30)/10.0+t+2.0*np.pi
+        x3 = np.arange(30)/10.0+t+4.0*np.pi
+
+        ybottom = np.zeros(len(x1))
+        ytop = 6.0*np.ones(len(x1))
+
+        fill_between(x1, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x2, ybottom, ytop, color=c, alpha=0.6)
+        fill_between(x3, ybottom, ytop, color=c, alpha=0.6)
+
+        #vlines(t+1.5, 6.0, 6.7+ylen, lw=4, color=c)
+        #vlines(t+1.0+2.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        #hlines(6.7+ylen, t+1.5-0.015, t+1.0+2.0*np.pi+0.025, lw=4, color=c)
+        #middlevx = ((t+1.0+2.0*np.pi) - (t+1.5))/2.0 + t+1.5
+        #vlines(middlevx, 6.7+ylen, 7.4+ylen, lw=4, color=c)
+        #ax.text(middlevx-0.1,7.6+(ylen*3.0), r"$P_{\mathrm{avg,1}}$", verticalalignment='center',
+        #        horizontalalignment='center', color=c, fontsize=22)
+
+        #vlines(t+2.0+2.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        #vlines(t+1.5+4.0*np.pi, 6.0, 6.7+ylen, lw=4, color=c)
+        #hlines(6.7+ylen, t+2.0*np.pi+2.0-0.015, t+1.5+4.0*np.pi+0.025, lw=4, color=c)
+        #middlevx = ((t+1.5+4.0*np.pi) - (t+2.0+2.0*np.pi))/2.0 + t+2.0+2.0*np.pi
+        #vlines(middlevx, 6.7+ylen, 7.4+ylen, lw=4, color=c)
+        #ax.text(middlevx-0.5, 7.35+(ylen*3.0), r"$P_{\mathrm{avg,2}}$", verticalalignment='bottom',
+        #        horizontalalignment='left', color=c, fontsize=22)
+
+        vlines(t+1.5, 6.0, 6.5+ylen, lw=4, color=c)
+        vlines(t+1.0+2.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        hlines(6.5+ylen, t+1.5-0.09, t+1.0+2.0*np.pi+0.1, lw=4, color=c)
+        middlevx = ((t+1.0+2.0*np.pi) - (t+1.5))/2.0 + t+1.5
+        vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
+        ax.text(middlevx-0.8+ylen*2.8,7.6+(ylen*1.2), r"$P_{\mathrm{sim,1}}$", verticalalignment='center',
+                horizontalalignment='center', color=c, fontsize=22)
+
+        vlines(t+2.0+2.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        vlines(t+1.5+4.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
+        hlines(6.5+ylen, t+2.0*np.pi+2.0-0.09, t+1.5+4.0*np.pi+0.1, lw=4, color=c)
+        middlevx = ((t+1.5+4.0*np.pi) - (t+2.0+2.0*np.pi))/2.0 + t+2.0+2.0*np.pi
+        vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
+        ax.text(middlevx-2.1+ylen*2.8, 7.35+(ylen*1.2), r"$P_{\mathrm{sim,2}}$", verticalalignment='bottom',
+                horizontalalignment='left', color=c, fontsize=22)
+
+
+        ylen += y_offset
+
+
+    savefig("analysis_schematic.png", format="png")
+    close()
+
+    return
+
 
 
 def main():
