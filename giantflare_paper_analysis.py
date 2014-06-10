@@ -125,17 +125,17 @@ def rxte_pvalues():
     ### spowers: powers to the corresponding frequency bins in sfreqs, for all segments
 
     lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
-                                      setlc=True, freq=625.0)
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=624.0)
 
     ### stack up periodograms at the same phase at consecutive cycles, up to averaging 9 cycles:
-    allstack = giantflare.make_stacks(savg, 10, 15)
+    allstack = giantflare.make_stacks(savg, 10, 10)
 
 
     ### load powers at 625 Hz from 40000 simulations with the QPO smoothed out:
     ### if file doesn't exist, load with function make_rxte_sims() below, but be warned that it takes a while
     ### (like a day or so) to run!
-    savgall_sims = np.loadtxt()
+    savgall_sims = np.loadtxt("1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall_new.txt")
 
     ### savgall_sims should be the direct output of giantflare.simulations, which means the first dimension
     ### of the array are the individual segments, the second dimension the simulations.
@@ -189,7 +189,7 @@ def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df
         tnew = load_rxte_data()
 
     savgall = giantflare.rxte_simulations(tnew, nsims=nsims, tcoarse=0.01, tfine=0.5/1000.0, freq=624.0, nsteps=10, 
-					  tseg=3.0, df=2.66, set_analysis=True, set_lc = False)
+                                          tseg=3.0, df=2.66, set_analysis=True, set_lc = False)
  
 #    savgall = giantflare.simulations(tnew, nsims=nsims, tcoarse = 0.01, tfine =0.5/1000.0, freq=624.0, nsteps=10,
 #                                     tseg=3.0, df = 2.66, fnyquist=1000.0, stack=None, setlc=False, set_analysis=True,
@@ -199,7 +199,7 @@ def make_rxte_sims(tnew=None, nsims=30000,save=True, fout="1806_rxte_tseg=3.0_df
         #f = open(fout, "w")
         #pickle.dump(savgall, f)
         #f.close()
-	np.savetxt(fout, savgall)
+        np.savetxt(fout, savgall)
 
     return savgall
 
@@ -1687,6 +1687,67 @@ def make_analysis_schematic():
 
     return
 
+
+def maxpower_plot():
+
+
+    tnew = load_rxte_data(tstart=196.0)
+    te_ind = tnew.searchsorted(tnew[0]+10*7.54577)
+    tnew  = tnew[:te_ind]
+
+
+    #fig = figure(figsize=(18,9))
+    #subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
+
+    ### first plot: light curve, left y-axis
+    #ax = fig.add_subplot(111)
+    lc = lightcurve.Lightcurve(tnew, timestep=0.01)
+    #plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid')
+    #axis([tnew[0], tnew[-1], 0, 7])
+    #xlabel("Time since trigger [s]", fontsize=26)
+    #ylabel(r"Count rate [$\mathrm{counts} \, \mathrm{s}^{-1}$]",fontsize=26)
+
+    #ax2 = subplot(1,1,1, sharex=ax, frameon=False)
+    #ax2.yaxis.tick_right()
+    #ax2.yaxis.set_label_position("right")
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=15, tseg=3.0, df=2.66, fnyquist=2000.0, stack=None,
+                                      setlc=True, freq=625.5)
+
+    print("maximum single power: %f"%np.max(savg))
+
+    #errorbar(mid, savg, xerr=xerr, color='red', marker="o")
+    #plot(yRight, '.-g')
+    #ylabel("Leahy Power", fontsize=26)
+
+
+    #savefig("maxpowers_test.png", format="png")
+    #close()
+
+    fig, ax1 = plt.subplots(figsize=(18,9))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
+
+    ax1.plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid')
+
+    ax1.set_xlim([tnew[0], tnew[-1]])
+    ax1.set_ylim([0,7])
+    #ax1.axis([tnew[0], tnew[-1], 0, 7])
+    ax1.set_xlabel("Time since trigger [s]", fontsize=26)
+    ax1.set_ylabel(r"Count rate [$10^3 \mathrm{counts} \; \mathrm{s}^{-1}$]",fontsize=26)
+
+    ax2 = ax1.twinx()
+
+    ax2.errorbar(mid, savg, xerr=xerr, color='red', fmt="o")
+    #plot(yRight, '.-g')
+    ax2.set_ylabel("Leahy Power", fontsize=26)
+    ax2.set_xlim([tnew[0], tnew[-1]])
+
+    savefig("maxpowers_test.png", format="png")
+    close()
+
+
+    return
 
 
 def main():
