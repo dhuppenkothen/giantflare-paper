@@ -695,12 +695,12 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 #                                     maxstack=9, qpo=False)
 
         if save:
-            np.savetxt("%s_tseg=%.2f_df=%.2f_savgall.txt"%(froot, tseg, df), savgall)
+            np.savetxt("%s_tseg=%.2f_df=%.2f_savgaadl.txt"%(froot, tseg, df), savgall)
 
     return savgall
 
-def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0], df_all=[2.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-                               froot_in="1806_rhessi", froot_out="test", plotdist=True):
+def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df_all=[2.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                               froot_in="1806_rhessi", froot_out="test", _rxteotdist=True, maxpowers=True):
     """
     Take several simulation runs made with make_rhessi_sims() and read them out one after the other,
     to avoid memory problems when running make_stacks for very large runs.
@@ -726,7 +726,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
     ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
         lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
             giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=626.5)
 
 
         savg_data.append(savg)
@@ -735,36 +735,42 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
 
         allstack_data.append(allstack)
 
-        ### find all datafiles with string froot_in in their filename
-        print("%s*_tseg=%.1f*"%(froot_in,tseg))
-        savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
+        if maxpowers is True:
+            print("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
+            maxp_all_files = glob.glob("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
+            print(maxp_all_files)
+            maxp_all = np.loadtxt(maxp_all_files[0])
+        else:
+            ### find all datafiles with string froot_in in their filename
+            print("%s*_tseg=%.1f*"%(froot_in,tseg))
+            savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
 
-        print("Simulation files: " + str(savgfiles))
+            print("Simulation files: " + str(savgfiles))
 
-        maxp_all = []
-        for f in savgfiles:
+            maxp_all = []
+            for f in savgfiles:
 
-            ### load simulation output
-            savgtemp = np.loadtxt(f)
-            print("shape(savgtemp): " + str(np.shape(savgtemp)))
+                ### load simulation output
+                savgtemp = np.loadtxt(f)
+                print("shape(savgtemp): " + str(np.shape(savgtemp)))
 
-            ### make averaged powers for each of the 10 cycles
-            allstack_temp = []
-            for s in savgtemp:
-                allstack_temp.append(giantflare.make_stacks(s, 19, 30))
+                ### make averaged powers for each of the 10 cycles
+                allstack_temp = []
+                for s in savgtemp:
+                    allstack_temp.append(giantflare.make_stacks(s, 19, 30))
 
-            maxp_temp = []
-            for i in xrange(len(allstack)):
-                amax = np.array([np.max(a[i]) for a in allstack_temp])
-                maxp_temp.append(amax)
+                maxp_temp = []
+                for i in xrange(len(allstack)):
+                    amax = np.array([np.max(a[i]) for a in allstack_temp])
+                    maxp_temp.append(amax)
 
-            maxp_temp = np.transpose(np.array(maxp_temp))
-            maxp_all.extend(maxp_temp)
+                maxp_temp = np.transpose(np.array(maxp_temp))
+                maxp_all.extend(maxp_temp)
 
-        maxp_all = np.array(maxp_all)
-        print("shape(maxp_all) " + str(np.shape(maxp_all)))
+            maxp_all = np.array(maxp_all)
+            print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
-        np.savetxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_out, tseg), maxp_all)
+            np.savetxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_out, tseg), maxp_all)
 
         pvals = []
         for i,a in enumerate(allstack):
@@ -841,7 +847,63 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5, 3.0
 
     return pvals_all
 
+def rhessi_periodogram_nosignal(froot_in="sgr1806_rhessi_tseg=2.0_simulated_maxpowers.txt", froot_out="sgr1806_rhessi"):
+    """
+    Make a periodogram of the seven cycles in the nine-cycle average that don't have the
+    strongest signal to check whether they are significant on their own.
 
+    """
+
+    ### load RXTE data
+    tnew = load_rhessi_data()
+
+    nsteps=30
+
+    ### compute powers at 625 Hz for time segments of 3s duration, binned frequency resolution of 2.66 Hz,
+    ### starting every 0.5(ish) seconds apart
+    ### details in comments for rxte_pvalues()
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=nsteps, tseg=2.0, df=1.0, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=626.5)
+
+    ### make an empty array of zeros
+    savg_nosig = np.zeros(30)
+
+    ### these are the cycles without the strongest signal in them
+    cycles = [0,1,2,3,4,5,6,7,8,9,10,11,15,16,17,18]
+
+    ### loop over cycles and powers at the same phase for these cycles
+    for c in cycles:
+        savg_nosig += np.array(savg[(c*nsteps):((c+1)*nsteps)])
+
+    ### divide by number of cycles
+    savg_nosig = savg_nosig/np.float(len(cycles))
+    savg_nosig = savg_nosig[0]
+    print("power in the sixteen cycles w/out signal: " + str(savg_nosig))
+
+    maxpowers = np.loadtxt(froot_in)
+
+    for s in savgall_sims:
+        stemp = 0
+        for c in cycles:
+            #print("len(stemp) " + str(len(stemp)))
+            stemp += np.array(s[c])
+            #print("stemp: " + str(stemp))
+
+        stemp = stemp/np.float(len(cycles))
+
+        savg_nosig_sims.append(stemp)
+
+    savg_nosig_sims = np.array(savg_nosig_sims)
+
+    savg_nosig_sims_sorted = np.sort(savg_nosig_sims)
+    print(np.shape(savg_nosig_sims_sorted))
+
+    n_sig = savg_nosig_sims_sorted.searchsorted(np.max(savg_nosig))
+
+    pval = np.float(len(savg_nosig_sims)-n_sig)/np.float(np.max(np.shape(savg_nosig_sims)))
+
+    return pval, savg_nosig_sims_sorted
 
 def rhessi_qpo_sims_allcycles(nsims=1000, froot="1806_rhessi"):
     ### first batch of simulations: constant signal in all cycles
