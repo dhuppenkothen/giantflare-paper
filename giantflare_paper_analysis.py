@@ -1186,283 +1186,6 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 ####### ALL PLOTS ####################################################################################################
 ######################################################################################################################
 
-def plot_lightcurves(datadir="./"):
-
-    """
-     Figure 1 from Huppenkothen et al (in prep)
-    """
-
-    ### load RXTE data, entire data set
-    times_rxte = load_rxte_data(datadir="./", tstart=0.0, climits=[10,200])
-
-    ### make RXTE light curve
-    lc_rxte = lightcurve.Lightcurve(times_rxte, timestep=0.1)
-
-    ### load RHESSI data, entire data set
-    times_rhessi = load_rhessi_data(datadir="./", tstart=0.0, tend=400.0, climits=[100,200], seglimits=[0,7])
-
-    ### make RHESSI light curve
-    lc_rhessi = lightcurve.Lightcurve(times_rhessi, timestep=0.1)
-
-    ###  now make plot
-    fig = figure(figsize=(24,9))
-    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.3)
-    ax = fig.add_subplot(121)
-
-    plot(lc_rxte.time, np.log10(lc_rxte.countrate), lw=2, color="black", linestyle="steps-mid")
-    axis([35, 350, 1.0, 4.5])
-    xlabel("Time since trigger [s]", fontsize=24, labelpad=15)
-    ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
-    title("RXTE Light Curve, 4-90 keV")
-
-    arrow(188, 4.1, 9*7.54-2.0, 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
-    arrow(188+9*7.54, 4.1, -(9*7.54-2.0), 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
-
-    ax.text(223,4.2, "625.6 Hz QPO", verticalalignment='center', horizontalalignment='center', color='black',
-            fontsize=26)
-
-    ax2 = fig.add_subplot(122)
-    plot(lc_rhessi.time, np.log10(lc_rhessi.countrate), lw=2, color="black", linestyle="steps-mid")
-
-    axis([35, 350, 1.0, 4.5])
-    xlabel("Time since trigger [s]", fontsize=24, labelpad=15)
-    ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
-    title("RHESSI Light Curve, 100-200 keV")
-
-    arrow(52, 3.1, 200-52, 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
-    arrow(200, 3.1, -(200-52), 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
-
-    ax2.text(127,3.2, "626.5 Hz QPO", verticalalignment='center', horizontalalignment='center', color='black',
-            fontsize=26)
-
-    savefig("f1.eps", format='eps')
-    close()
-
-    return
-
-def plot_rxte_pvalues(nsims=100000, froot = "sgr1806_rxte"):
-
-    pvals = np.loadtxt("%s_pvals_all.txt"%froot)
-
-    ### Compute theoretical error on p-values
-    pvals_error = pvalues_error(pvals, nsims)
-
-    ### plot p-values
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
-    xlabel("Number of averaged cycles", fontsize=20)
-    ylabel("P-value of maximum power", fontsize=20)
-    title("SGR 1806-20, RXTE data, p-value from %i simulations"%nsims)
-    savefig("f2.eps", format="eps")
-    close()
-
-
-
-def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
-
-    """
-    Use output of rxte_qpo_sims_singlecycle() to make a plot that shows the cycle with the
-    strongest QPO in the RXTE data, and overplots the mean and 0.05/0.95 quantiles as red line and
-    shaded area, respectively.
-
-    Plotting in here is slightly different than in rxte_qpo_sims_singlecycle(), owing to the fact
-    that eps doesn't allow for transparency natively.
-
-
-    """
-
-
-    tnew = load_rxte_data()
-
-    mid_fine = np.loadtxt("%s_midbins.txt"%froot)
-    sq_all = np.loadtxt("%s_quantiles.txt"%froot)
-    pvals_all = np.loadtxt("%s_pvals_all.txt"%froot)
-
-    minind = tnew.searchsorted(236.0)
-    maxind = tnew.searchsorted(236.0+(1.0/0.132)*2)
-
-    tnew_small = tnew[minind:maxind]
-
-    finesteps = int((1.0/0.132)/0.01)
-    print("finesteps: %.4f" %finesteps)
-
-    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-            giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
-                                          setlc=True, freq=624.0)
-
-#    fig = figure(figsize=(24,9))
-    fig = figure(figsize=(12,9))
-    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.95, wspace=0.1, hspace=0.2)
-
-#    ax = fig.add_subplot(121)
-    ax = fig.add_subplot(111)
-
-    ### plot quantiles as shaded area:
-    fill_between(mid_fine, sq_all[:,0], sq_all[:,2], color="lightcoral", label="95\% quantiles from simulations",
-                 zorder=1)
-
-    plot(mid_fine, sq_all[:,0], lw=2, color="red")
-    plot(mid_fine, sq_all[:,2], lw=2, color="red")
-
-    ### plot data
-    plot(mid, savg, lw=3, color="black", linestyle="steps-mid", label="observed data")
-
-
-    ### plot mean from simulations:
-    plot(mid_fine, sq_all[:,1], lw=2, color="red", label="mean of simulations")
-
-
-
-    maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
-
-    legend(loc="upper right", prop={"size":16})
-    axis([238.0, 246.0, 0, maxy+2])
-    xlabel("Time since trigger [s]", fontsize=20)
-    ylabel("Leahy Power", fontsize=20)
-
-
-
-#    ax2 = fig.add_subplot(122)
-#    pvals_hist = []
-#    for i in range(10):
-#        p = pvals_all[:,i]
-#        h,bins = np.histogram(np.log10(p), bins=15, range=[-5.1,0.0])
-#        pvals_hist.append(h[::-1])
-
-#    ax2.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.5,10.5,-5.1,0.0])
-#    ax2.set_aspect(2)
-
-#    pvals_data = loadtxt("sgr1806_rxte_pvals_all.txt")
-
-#    plot(np.arange(10)+1, np.log10(pvals_data), "-o", lw=3, color="cyan", ms=10)
-
-#    axis([0.5,10.5,-5.1,0.0])
-#    xlabel("Number of averaged cycles", fontsize=20)
-#    ylabel("log(p-value)", fontsize=20)
-
-    savefig("f3.eps", format="eps")
-    close()
-
-
-    return
-
-
-def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
-                       nsims=10000):
-
-    """
-    Re-makes the p-value plot for the RHESSI data, without having to re-do the entire analysis.
-    Figure 4 of Huppenkothen et al, 2014
-
-    filename: a string that has the file with the p-values
-    tseg: a list of the segment lengths used for the various p-values
-    nsims: the number of simulations from which the p-value was derived, to compute the error
-    froot: output file name root
-    """
-
-    pvals_all = np.loadtxt(filename)
-    print("shape pvals_all: "+ str(np.shape(pvals_all)))
-
-    pvals_error = [pvalues_error(pvals, nsims) for pvals in pvals_all]
-    print("shape(pvals_error): " + str(np.shape(pvals_error)))
-
-    log_errors = [0.434*dp/p for dp,p in zip(pvals_error, pvals_all)]
-    print("shape(pvals_error): " + str(np.shape(pvals_error)))
-
-    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
-
-
-    ### plot p-values
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-
-    for ts, pv, pe, c, in zip(tseg, pvals_all, log_errors, colours[:len(pvals_all)]):
-    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
-                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%ts)
-    xlabel("Number of averaged cycles", fontsize=20)
-    ylabel(r"$\log_{10}{(\mathrm{p-value\; of\; maximum\; power})}$", fontsize=20)
-    legend(loc="upper right", prop={"size":16})
-    axis([0,20,-4.2, 0.5])
-    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
-    savefig("f4.eps", format="eps")
-    close()
-
-    return
-
-
-
-def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0]):
-
-    tnew = load_rhessi_data()
-
-
-
-    for f,namestr in enumerate(["allcycles", "allcycles_randomised", "singlecycle"]):
-
-        fig = figure(figsize=(24,18))
-        subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
-
-
-
-        ### loop over all values of the segment lengths and frequency resolutions
-        for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
-            ### extract maximum powers from data.
-            ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
-            lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-                giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
-                                              setlc=True, freq=626.0)
-
-
-            ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
-            allstack = giantflare.make_stacks(savg, 19, 30)
-
-
-            maxp_all = np.loadtxt("sgr1806_rhessi_tseg=%.1f_simulated_maxpowers.txt"%(tseg))
-
-            pvals = np.loadtxt("sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
-            print("pvals file: sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
-
-            pvals_data, pvals_hist = [], []
-            for i in xrange(len(allstack)):
-
-                    ### these are the simulations WITHOUT QPO
-                sims = maxp_all[:,i]
-                sims = np.sort(sims)
-                len_sims = np.float(len(sims))
-                #print("len_sims %i" %len_sims)
-                #print("sims[0:10] " + str(sims[0:10]))
-                #print("sims[-10:] " + str(sims[-10:]))
-
-
-                ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
-                pvals_data.append((len_sims-ind_data)/len_sims)
-
-
-                h, bins = np.histogram(np.log10(pvals[i]), bins=10, range=[-4.1, 0.0])
-                pvals_hist.append(h[::-1])
-
-            #print("shape(pvals): " + str(np.shape(pvals)))
-            #print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
-
-            ax = fig.add_subplot(2,2,k+1)
-            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.0,len(allstack), -4.1,0.0])
-            ax.set_aspect(3)
-            print('len(pvals_data): ' + str(len(pvals_data)))
-            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=2, facecolor="LightGoldenRodYellow",
-                    edgecolor="cyan", marker="v", s=50)
-            axis([0,len(allstack), -4.1, 0.0])
-            xlabel("Number of averaged cycles", fontsize=24)
-            ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=24)
-            title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
-
-        savefig("f%i.eps"%(f+5), format="eps")
-        close()
-
-    return
-
 def plot_averaging_example():
 
     tnew = load_rxte_data(tstart=198.0)
@@ -1531,7 +1254,7 @@ def plot_averaging_example():
         ylen += y_offset
 
 
-    savefig("analysis_figure1.png",format="png")
+    savefig("f1.pdf",format="pdf")
     close()
 
     return
@@ -1713,7 +1436,7 @@ def make_analysis_schematic():
         ylen += y_offset
 
 
-    savefig("analysis_schematic.png", format="png")
+    savefig("f2.pdf", format="pdf")
     close()
 
     return
@@ -1797,11 +1520,290 @@ def maxpower_plot():
     ax2.arrow(maxtime2, maxp1+0.5+1.3, 0, -1.3, fc="cyan", ec="cyan", head_width=0.5, head_length=0.15, lw=3)
 
 
-    savefig("maxpowers_test.png", format="png")
+    savefig("f3.pdf", format="pdf")
     close()
 
 
     return
+
+
+def plot_lightcurves(datadir="./"):
+
+    """
+     Figure 1 from Huppenkothen et al (in prep)
+    """
+
+    ### load RXTE data, entire data set
+    times_rxte = load_rxte_data(datadir="./", tstart=0.0, climits=[10,200])
+
+    ### make RXTE light curve
+    lc_rxte = lightcurve.Lightcurve(times_rxte, timestep=0.1)
+
+    ### load RHESSI data, entire data set
+    times_rhessi = load_rhessi_data(datadir="./", tstart=0.0, tend=400.0, climits=[100,200], seglimits=[0,7])
+
+    ### make RHESSI light curve
+    lc_rhessi = lightcurve.Lightcurve(times_rhessi, timestep=0.1)
+
+    ###  now make plot
+    fig = figure(figsize=(24,9))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.3)
+    ax = fig.add_subplot(121)
+
+    plot(lc_rxte.time, np.log10(lc_rxte.countrate), lw=2, color="black", linestyle="steps-mid")
+    axis([35, 350, 1.0, 4.5])
+    xlabel("Time since trigger [s]", fontsize=24, labelpad=15)
+    ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
+    title("RXTE Light Curve, 4-90 keV")
+
+    arrow(188, 4.1, 9*7.54-2.0, 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
+    arrow(188+9*7.54, 4.1, -(9*7.54-2.0), 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
+
+    ax.text(223,4.2, "625.6 Hz QPO", verticalalignment='center', horizontalalignment='center', color='black',
+            fontsize=26)
+
+    ax2 = fig.add_subplot(122)
+    plot(lc_rhessi.time, np.log10(lc_rhessi.countrate), lw=2, color="black", linestyle="steps-mid")
+
+    axis([35, 350, 1.0, 4.5])
+    xlabel("Time since trigger [s]", fontsize=24, labelpad=15)
+    ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
+    title("RHESSI Light Curve, 100-200 keV")
+
+    arrow(52, 3.1, 200-52, 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
+    arrow(200, 3.1, -(200-52), 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
+
+    ax2.text(127,3.2, "626.5 Hz QPO", verticalalignment='center', horizontalalignment='center', color='black',
+            fontsize=26)
+
+    savefig("f4.pdf", format='pdf')
+    close()
+
+    return
+
+def plot_rxte_pvalues(nsims=100000, froot = "sgr1806_rxte"):
+
+    pvals = np.loadtxt("%s_pvals_all.txt"%froot)
+
+    ### Compute theoretical error on p-values
+    pvals_error = pvalues_error(pvals, nsims)
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RXTE data, p-value from %i simulations"%nsims)
+    savefig("f5.pdf", format="pdf")
+    close()
+
+
+
+def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
+
+    """
+    Use output of rxte_qpo_sims_singlecycle() to make a plot that shows the cycle with the
+    strongest QPO in the RXTE data, and overplots the mean and 0.05/0.95 quantiles as red line and
+    shaded area, respectively.
+
+    Plotting in here is slightly different than in rxte_qpo_sims_singlecycle(), owing to the fact
+    that eps doesn't allow for transparency natively.
+
+
+    """
+
+
+    tnew = load_rxte_data()
+
+    mid_fine = np.loadtxt("%s_midbins.txt"%froot)
+    sq_all = np.loadtxt("%s_quantiles.txt"%froot)
+    pvals_all = np.loadtxt("%s_pvals_all.txt"%froot)
+
+    minind = tnew.searchsorted(236.0)
+    maxind = tnew.searchsorted(236.0+(1.0/0.132)*2)
+
+    tnew_small = tnew[minind:maxind]
+
+    finesteps = int((1.0/0.132)/0.01)
+    print("finesteps: %.4f" %finesteps)
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
+                                          setlc=True, freq=624.0)
+
+#    fig = figure(figsize=(24,9))
+    fig = figure(figsize=(12,9))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.95, wspace=0.1, hspace=0.2)
+
+#    ax = fig.add_subplot(121)
+    ax = fig.add_subplot(111)
+
+    ### plot quantiles as shaded area:
+    fill_between(mid_fine, sq_all[:,0], sq_all[:,2], color="lightcoral", label="95\% quantiles from simulations",
+                 zorder=1)
+
+    plot(mid_fine, sq_all[:,0], lw=2, color="red")
+    plot(mid_fine, sq_all[:,2], lw=2, color="red")
+
+    ### plot data
+    plot(mid, savg, lw=3, color="black", linestyle="steps-mid", label="observed data")
+
+
+    ### plot mean from simulations:
+    plot(mid_fine, sq_all[:,1], lw=2, color="red", label="mean of simulations")
+
+
+
+    maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
+
+    legend(loc="upper right", prop={"size":16})
+    axis([238.0, 246.0, 0, maxy+2])
+    xlabel("Time since trigger [s]", fontsize=20)
+    ylabel("Leahy Power", fontsize=20)
+
+
+
+#    ax2 = fig.add_subplot(122)
+#    pvals_hist = []
+#    for i in range(10):
+#        p = pvals_all[:,i]
+#        h,bins = np.histogram(np.log10(p), bins=15, range=[-5.1,0.0])
+#        pvals_hist.append(h[::-1])
+
+#    ax2.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.5,10.5,-5.1,0.0])
+#    ax2.set_aspect(2)
+
+#    pvals_data = loadtxt("sgr1806_rxte_pvals_all.txt")
+
+#    plot(np.arange(10)+1, np.log10(pvals_data), "-o", lw=3, color="cyan", ms=10)
+
+#    axis([0.5,10.5,-5.1,0.0])
+#    xlabel("Number of averaged cycles", fontsize=20)
+#    ylabel("log(p-value)", fontsize=20)
+
+    savefig("f6.pdf", format="pdf")
+    close()
+
+
+    return
+
+
+def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
+                       nsims=10000):
+
+    """
+    Re-makes the p-value plot for the RHESSI data, without having to re-do the entire analysis.
+    Figure 4 of Huppenkothen et al, 2014
+
+    filename: a string that has the file with the p-values
+    tseg: a list of the segment lengths used for the various p-values
+    nsims: the number of simulations from which the p-value was derived, to compute the error
+    froot: output file name root
+    """
+
+    pvals_all = np.loadtxt(filename)
+    print("shape pvals_all: "+ str(np.shape(pvals_all)))
+
+    pvals_error = [pvalues_error(pvals, nsims) for pvals in pvals_all]
+    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+
+    log_errors = [0.434*dp/p for dp,p in zip(pvals_error, pvals_all)]
+    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+
+    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
+
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    for ts, pv, pe, c, in zip(tseg, pvals_all, log_errors, colours[:len(pvals_all)]):
+    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%ts)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel(r"$\log_{10}{(\mathrm{p-value\; of\; maximum\; power})}$", fontsize=20)
+    legend(loc="upper right", prop={"size":16})
+    axis([0,20,-4.2, 0.5])
+    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
+    savefig("f7.pdf", format="pdf")
+    close()
+
+    return
+
+
+
+def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0]):
+
+    tnew = load_rhessi_data()
+
+
+
+    for f,namestr in enumerate(["allcycles", "allcycles_randomised", "singlecycle"]):
+
+        fig = figure(figsize=(24,18))
+        subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+
+
+        ### loop over all values of the segment lengths and frequency resolutions
+        for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
+            ### extract maximum powers from data.
+            ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+            lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+                giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
+                                              setlc=True, freq=626.0)
+
+
+            ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
+            allstack = giantflare.make_stacks(savg, 19, 30)
+
+
+            maxp_all = np.loadtxt("sgr1806_rhessi_tseg=%.1f_simulated_maxpowers.txt"%(tseg))
+
+            pvals = np.loadtxt("sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
+            print("pvals file: sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
+
+            pvals_data, pvals_hist = [], []
+            for i in xrange(len(allstack)):
+
+                    ### these are the simulations WITHOUT QPO
+                sims = maxp_all[:,i]
+                sims = np.sort(sims)
+                len_sims = np.float(len(sims))
+                #print("len_sims %i" %len_sims)
+                #print("sims[0:10] " + str(sims[0:10]))
+                #print("sims[-10:] " + str(sims[-10:]))
+
+
+                ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
+                pvals_data.append((len_sims-ind_data)/len_sims)
+
+
+                h, bins = np.histogram(np.log10(pvals[i]), bins=10, range=[-4.1, 0.0])
+                pvals_hist.append(h[::-1])
+
+            #print("shape(pvals): " + str(np.shape(pvals)))
+            #print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
+
+            ax = fig.add_subplot(2,2,k+1)
+            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.0,len(allstack), -4.1,0.0])
+            ax.set_aspect(3)
+            print('len(pvals_data): ' + str(len(pvals_data)))
+            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=2, facecolor="LightGoldenRodYellow",
+                    edgecolor="cyan", marker="v", s=50)
+            axis([0,len(allstack), -4.1, 0.0])
+            xlabel("Number of averaged cycles", fontsize=24)
+            ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=24)
+            title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
+
+        savefig("f%i.eps"%(f+8), format="eps")
+        close()
+
+    return
+
 
 
 def main():
