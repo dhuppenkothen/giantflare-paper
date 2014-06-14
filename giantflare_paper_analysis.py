@@ -1548,7 +1548,7 @@ def plot_lightcurves(datadir="./"):
     lc_rhessi = lightcurve.Lightcurve(times_rhessi, timestep=0.1)
 
     ###  now make plot
-    fig = figure(figsize=(24,9))
+    fig = figure(figsize=(24,8))
     subplots_adjust(top=0.9, bottom=0.1, left=0.08, right=0.98, wspace=0.1, hspace=0.3)
     ax = fig.add_subplot(121)
 
@@ -1693,7 +1693,7 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
 
 
 def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
-                       nsims=10000):
+                       nsims=30000):
 
     """
     Re-makes the p-value plot for the RHESSI data, without having to re-do the entire analysis.
@@ -1728,7 +1728,7 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel(r"$\log_{10}{(\mathrm{p-value\; of\; maximum\; power})}$", fontsize=20)
     legend(loc="upper right", prop={"size":16})
-    axis([0,20,-4.2, 0.5])
+    axis([0,20,-np.log10(1.0/nsims), 0.5])
     title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
     savefig("f7.pdf", format="pdf")
     close()
