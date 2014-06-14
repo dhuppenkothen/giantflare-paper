@@ -1259,6 +1259,91 @@ def plot_averaging_example():
 
     return
 
+def maxpower_plot():
+
+
+    tnew = load_rxte_data(tstart=196.0)
+    te_ind = tnew.searchsorted(tnew[0]+10*7.54577)
+    tnew  = tnew[:te_ind]
+
+
+    #fig = figure(figsize=(18,9))
+    #subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
+
+    ### first plot: light curve, left y-axis
+    #ax = fig.add_subplot(111)
+    lc = lightcurve.Lightcurve(tnew, timestep=0.05)
+    #plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid')
+    #axis([tnew[0], tnew[-1], 0, 7])
+    #xlabel("Time since trigger [s]", fontsize=26)
+    #ylabel(r"Count rate [$\mathrm{counts} \, \mathrm{s}^{-1}$]",fontsize=26)
+
+    #ax2 = subplot(1,1,1, sharex=ax, frameon=False)
+    #ax2.yaxis.tick_right()
+    #ax2.yaxis.set_label_position("right")
+
+    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=624.0)
+
+    allstack = giantflare.make_stacks(savg, 10, 10)
+
+    print("maximum single power: %f"%np.max(savg))
+
+    #errorbar(mid, savg, xerr=xerr, color='red', marker="o")
+    #plot(yRight, '.-g')
+    #ylabel("Leahy Power", fontsize=26)
+
+
+    #savefig("maxpowers_test.png", format="png")
+    #close()
+
+    fig, ax1 = plt.subplots(figsize=(12,9))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
+
+    ax1.plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid', label="RXTE light curve")
+
+    ax1.set_xlim([tnew[0], tnew[-1]])
+    ax1.set_ylim([0,7])
+    #ax1.axis([tnew[0], tnew[-1], 0, 7])
+    ax1.set_xlabel("Time since trigger [s]", fontsize=26)
+    ax1.set_ylabel(r"Count rate [$10^3 \mathrm{counts} \; \mathrm{s}^{-1}$]",fontsize=26)
+
+    ax2 = ax1.twinx()
+
+    ax2.errorbar(mid, savg, xerr=xerr, color='red', fmt="o", ecolor="red", markersize=10, markeredgecolor="red",
+                 label="single-cycle powers at 625 Hz")
+    ax2.errorbar(mid[:len(allstack[1])], allstack[1], xerr=xerr[:len(allstack[1])], color="cyan", fmt="v",
+                 markeredgecolor="cyan",
+                 markersize=10, ecolor="cyan", label="two-cycle averaged powers at 625 Hz")
+
+    #plot(yRight, '.-g')
+    ax2.set_ylabel("Leahy Power", fontsize=26, rotation=270, labelpad=20)
+    ax2.set_xlim([tnew[0], tnew[-1]])
+    ax2.set_ylim([0,12])
+
+    legend()
+
+    ### add arrows where the highest powers are
+    maxp1 = np.max(savg)
+    maxind1 = np.where(savg == maxp1)[0]
+    maxtime1 = mid[maxind1]
+
+    maxp2 = np.max(allstack[1])
+    maxind2 = np.where(allstack[1] == maxp2)[0]
+    maxtime2 = mid[maxind2]
+
+    ax2.arrow(maxtime1, maxp1+0.5+1.3, 0, -1.3, fc="red", ec="red", head_width=0.5, head_length=0.15, lw=3)
+    ax2.arrow(maxtime2, maxp1+0.5+1.3, 0, -1.3, fc="cyan", ec="cyan", head_width=0.5, head_length=0.15, lw=3)
+
+
+    savefig("f2.pdf", format="pdf")
+    close()
+
+
+    return
+
+
 def make_analysis_schematic():
 
     tnew = load_rxte_data(tstart=198.0)
@@ -1436,95 +1521,12 @@ def make_analysis_schematic():
         ylen += y_offset
 
 
-    savefig("f2.pdf", format="pdf")
-    close()
-
-    return
-
-
-def maxpower_plot():
-
-
-    tnew = load_rxte_data(tstart=196.0)
-    te_ind = tnew.searchsorted(tnew[0]+10*7.54577)
-    tnew  = tnew[:te_ind]
-
-
-    #fig = figure(figsize=(18,9))
-    #subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
-
-    ### first plot: light curve, left y-axis
-    #ax = fig.add_subplot(111)
-    lc = lightcurve.Lightcurve(tnew, timestep=0.05)
-    #plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid')
-    #axis([tnew[0], tnew[-1], 0, 7])
-    #xlabel("Time since trigger [s]", fontsize=26)
-    #ylabel(r"Count rate [$\mathrm{counts} \, \mathrm{s}^{-1}$]",fontsize=26)
-
-    #ax2 = subplot(1,1,1, sharex=ax, frameon=False)
-    #ax2.yaxis.tick_right()
-    #ax2.yaxis.set_label_position("right")
-
-    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
-                                      setlc=True, freq=624.0)
-
-    allstack = giantflare.make_stacks(savg, 10, 10)
-
-    print("maximum single power: %f"%np.max(savg))
-
-    #errorbar(mid, savg, xerr=xerr, color='red', marker="o")
-    #plot(yRight, '.-g')
-    #ylabel("Leahy Power", fontsize=26)
-
-
-    #savefig("maxpowers_test.png", format="png")
-    #close()
-
-    fig, ax1 = plt.subplots(figsize=(12,9))
-    subplots_adjust(top=0.9, bottom=0.1, left=0.1, right=0.9, wspace=0.0, hspace=0.2)
-
-    ax1.plot(lc.time, lc.countrate/1000.0, lw=2, color="black", linestyle='steps-mid', label="RXTE light curve")
-
-    ax1.set_xlim([tnew[0], tnew[-1]])
-    ax1.set_ylim([0,7])
-    #ax1.axis([tnew[0], tnew[-1], 0, 7])
-    ax1.set_xlabel("Time since trigger [s]", fontsize=26)
-    ax1.set_ylabel(r"Count rate [$10^3 \mathrm{counts} \; \mathrm{s}^{-1}$]",fontsize=26)
-
-    ax2 = ax1.twinx()
-
-    ax2.errorbar(mid, savg, xerr=xerr, color='red', fmt="o", ecolor="red", markersize=10, markeredgecolor="red",
-                 label="single-cycle powers at 625 Hz")
-    ax2.errorbar(mid[:len(allstack[1])], allstack[1], xerr=xerr[:len(allstack[1])], color="cyan", fmt="v",
-                 markeredgecolor="cyan",
-                 markersize=10, ecolor="cyan", label="two-cycle averaged powers at 625 Hz")
-
-    #plot(yRight, '.-g')
-    ax2.set_ylabel("Leahy Power", fontsize=26, rotation=270, labelpad=20)
-    ax2.set_xlim([tnew[0], tnew[-1]])
-    ax2.set_ylim([0,12])
-
-    legend()
-
-    ### add arrows where the highest powers are
-    maxp1 = np.max(savg)
-    maxind1 = np.where(savg == maxp1)[0]
-    maxtime1 = mid[maxind1]
-
-    maxp2 = np.max(allstack[1])
-    maxind2 = np.where(allstack[1] == maxp2)[0]
-    maxtime2 = mid[maxind2]
-
-    ax2.arrow(maxtime1, maxp1+0.5+1.3, 0, -1.3, fc="red", ec="red", head_width=0.5, head_length=0.15, lw=3)
-    ax2.arrow(maxtime2, maxp1+0.5+1.3, 0, -1.3, fc="cyan", ec="cyan", head_width=0.5, head_length=0.15, lw=3)
-
-
     savefig("f3.pdf", format="pdf")
     close()
 
-
     return
+
+
 
 
 def plot_lightcurves(datadir="./"):
@@ -1547,7 +1549,7 @@ def plot_lightcurves(datadir="./"):
 
     ###  now make plot
     fig = figure(figsize=(24,9))
-    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.3)
+    subplots_adjust(top=0.9, bottom=0.1, left=0.08, right=0.98, wspace=0.1, hspace=0.3)
     ax = fig.add_subplot(121)
 
     plot(lc_rxte.time, np.log10(lc_rxte.countrate), lw=2, color="black", linestyle="steps-mid")
@@ -1658,10 +1660,10 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
 
     maxy = np.max([np.max(savg), np.max(sq_all[:,2])])
 
-    legend(loc="upper right", prop={"size":16})
+    legend(loc="upper right", prop={"size":24})
     axis([238.0, 246.0, 0, maxy+2])
-    xlabel("Time since trigger [s]", fontsize=20)
-    ylabel("Leahy Power", fontsize=20)
+    xlabel("Time since trigger [s]", fontsize=24)
+    ylabel("Leahy Power", fontsize=24)
 
 
 

@@ -23,7 +23,7 @@
 \author{Daniela Huppenkothen, Anna L. Watts}
 \affil{Anton Pannekoek Institute for Astronomy, University of Amsterdam, Amsterdam  1098 XH,
   The Netherlands}
-\email{d.huppenkothen@@uva.nl}
+\email{d.huppenkothen@uva.nl}
 \author{Yuri Levin}
 \affil{Monash Center for Astrophysics and School of Physics, Monash University, Clayton, Victoria 3800, Australia}
 
@@ -59,15 +59,16 @@ We would like to test the specific question of whether the data are consistent w
 
 \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=18cm]{analysis_figure1.png}
+\includegraphics[width=18cm]{f1.pdf}
 \caption{Constructing averaged periodograms: in every rotational cycle of the neutron star, we select a stretch of length $t_{\mathrm{set}}$ (the width of the shaded regions in this figure), starting $\delta t$ seconds apart (e.g. the distance between the start of the blue shaded region and the red shaded region). This way, we create $N_r$ overlapping segments per cycle, which start at the same
  rotational phase throughout the tail of the giant flare. Each segment is Fourier transformed into a Leahy-normalised periodogram; we then extract the power at $625 \hz$ (\rxte) or $626.5\hz$ (\rhessi). To search for long-lived signals, we averaged between $2$ and $10$ cycles (\rxte) and between $2$ and $19$ cycles (\rhessi) together in the following way. In order to average over two cycles, we extract the right powers from all segments of cycles $1$ and $2$, and average powers together that match in phase (e.g. the two blue segments in this Figure). We repeat this procedure with cycles $2$ and $3$, and continue to the end of the flare. Similarly, we can average together cycles $1$, $2$ and $3$ to average over three cycles, followed by cycles $2$, $3$ and $4$, and so on. }
 \label{fig:analysis1}
 \end{center}
 \end{figure*}
+
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{maxpowers_test.png}
+\includegraphics[width=9cm]{f2.pdf}
 \caption{The test statistic we use is defined as the maximum power over all segments in the giant flare. Here, an example for the \rxte observation: we extract powers at $625 \hz$ in $3\mathrm{s}$ segments starting $\sim 0.75 \mathrm{s}$ apart, and bin over $2.66 \hz$. The resulting Leahy-normalised powers (red) are plotted on top of the \rxte light curve (black). The x-axis error bars denote the width of each segment. The maximum power (red arrow) is found in a segment on the falling edge of the pulse, in a cycle $\sim 240 \mathrm{s}$ after the trigger. In order to assess the significance of this power, we repeat the analysis described in the text on simulated giant flare light curves without the presence of a QPO. As for the data, we extract the maximum power over all cycles and segments, and compare the distribution of these maximum powers to that observed in order to compute a p-value. This ensures that the number of trials for the (non-independent) segments is correctly accounted for. For comparison, we also plot 2-cycle averaged powers as described in the text and Figure \ref{fig:analysis1} (cyan symbols). Powers averaged over two cycles are generally power, but this is expected: as powers are averaged, the noise distribution narrows as well. As for the non-averaged powers, we extract the maximum power over all cycles and segments as the relevant test statistic (cyan arrow). Note that the maximum power is shifted to a segment at the same phase as the segment with the maximum non-averaged power, but a cycle earlier; also note that there is necessarily no 2-cycle averages for the last cycle. }
 \label{fig:teststatistic}
 \end{center}
@@ -82,7 +83,7 @@ Observations taken with \rhessi are detailed in \citet{Watts06}. Following their
 
 \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=18cm]{analysis_schematic.png}
+\includegraphics[width=18cm]{f3.pdf}
 \caption{Overview of the analysis procedure (here shown is the \rxte light curve). Left panel: first, we extract powers at $625\hz$ (\rxte) and $626.5\hz$ (\rhessi) from individual, overlapping segments, and average powers from between $2$ and $9$ (\rxte; $2$ and $19$ for \rhessi) as described in the text and shown in Figure \ref{fig:analysis1}. In order to test for significance, we create simulations from the original data in the following way. We smooth the light curve to $0.01\,\mathrm{s}$ in order to remove all traces of the high-frequency QPO (middle panel; smoothing exaggerated for illustrative purposes). We then sample the light curve at the original, high time resolution and produce $N_\mathrm{sim}$ realisations by introducing Poisson noise to simulate the effects of a photon counting detector. We can then perform the same procedure as on the observed data on our simulations (right panel), and test the observed (averaged) powers against distributions of simulated powers with the QPO removed.}
 \label{fig:analysis2}
 \end{center}
@@ -112,7 +113,7 @@ In each case, we construct simulations in the same way as detailed above by smoo
 
 \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=18cm]{f1.eps}
+\includegraphics[width=18cm]{f4.pdf}
 \caption{Light curves of both the \rxte data (left panel) and the \rhessi data (right panel) in the relevant energy ranges. Note that both light curves are plotted on the same (logarithmic) scale, showing the vastly different data quality between the two instruments. 
 The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for the \rxte data, left panel) and \citet{Watts06} (for the \rhessi data, right panel) are indicated by horizontal arrows.}
 \label{fig:lcs}
@@ -121,7 +122,7 @@ The cycles in which the QPO was previously detected by \citet{Strohmayer06} (for
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{f2.eps}
+\includegraphics[width=9cm]{f5.pdf}
 \caption{Integrated probability of observing a signal at $625 \, \mathrm{Hz}$ in the \rxte data at least as high or higher than the observed power in dependence of the number of cycles averaged. For each data point, we extracted the maximum power from all (averaged) segments over the entire length of the searched part of the giant flare light curve, for both the observation and the simulated light curves. A smaller p-value corresponds to a higher significance: There is a significant signal in a single cycle, starting at $t = t_0 + 239 \, \mathrm{s}$, where $t_0$ is the trigger of the observation, as well as significant detections when averaging five consecutive cycles or more. Errors on the p-values are derived from the theoretical approximation valid for small probabilities $\Delta p = \sqrt{p (1-p)/N}$, where $p$ is the p-value and $N$ is the number of simulations. Note that this likely underestimates the real error on the p-value, as it excludes any systematic effects.}
 \label{fig:rxte_pvals}
 \end{center}
@@ -151,7 +152,7 @@ In order to answer the question whether the QPO is present in all nine cycles, a
 
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{f3.eps}
+\includegraphics[width=9cm]{f6.pdf}
 \caption{The cycle of the giant flare, observed with \rxte, with the strongest QPO signal. Each data point (in black) corresponds to the power at $625 \,\mathrm{Hz}$ extracted from a $3\,\mathrm{s}$ segment starting $1.5\,\mathrm{s}$ before the time stamp of the data point. Each segment is separated by $0.01\,\mathrm{s}$, and thus neighbouring segments overlap by $2.99 \,\mathrm{s}$. Note the sharp rise in power at $\approx t0+ 241.5\,\mathrm{s}$: as the sliding window shifts into the part of the part of the light curve where the QPO appears, the power at $625\,\mathrm{Hz}$ rises sharply as well. In order to constrain the duration and amplitude of the signal, we simulated $1000$ light curves, where we first smoothed out all variability above $100\,\mathrm{Hz}$, then added a single sinusoidal signal of $0.5\,\mathrm{s}$ duration and a fractional rms amplitude of $0.22$, starting at $241.5 +t_0\,\mathrm{s}$, and analysed these light curves in exactly the same way as the data. The thick red line corresponds to the mean of these $1000$ simulations for a given segment, in analogy to the data (in black). The shaded area constrains the $5\%$ and $95\%$ quantile ranges derived from the simulations, indicating that the observed powers are well-represented by our simulations.}
 \label{fig:rxte_sims}
 \end{center}
@@ -165,7 +166,7 @@ Given that the data are far more consistent with a signal being present in only 
 We introduced an artificial sinusoidal signal into a single cycle in 1000 simulations, in the same part of the rotational cycle as the real QPO, for a duration of $0.5\, \mathrm{s}$ and a fractional rms amplitude of $0.22$. The amplitude of the sinusoidal signal varies with the underlying giant flare emission, such that the fractional rms amplitude remains constant. In Figure \ref{fig:rxte_sims}, we show the mean power for each segment out of $1000$ simulations, as well as the 5\% and 95\% quantiles derived from these simulations, compared with the powers derived from the real data. The observed powers are easily reproduced with a short signal of $0.5\, \mathrm{s}$ duration. We note that $0.5\,\mathrm{s}$ is only a small fraction of the rotational period of the neutron star itself \citep[$7.5477 \,\mathrm{s}$,][]{Woods07}, thus cannot be easily explained by the region of the neutron star affected by the oscillations moving in and out of the line of sight.
 \begin{figure}[htbp]
 \begin{center}
-\includegraphics[width=9cm]{f4.eps}
+\includegraphics[width=9cm]{f7.pdf}
 \caption{\rhessi data: p-values for measuring a power at $626.5\, \mathrm{Hz}$ in any of the segments at least as high or higher than the ensemble of powers derived from all segments from 10000 simulations. We show these p-values in dependence of the number of phase-matched periodograms averaged to construct the power in that segment, for different segment lengths between $0.5$ and $2.5$ seconds. The p-values indicate that the signal is most strongly detected for segments of $2\,\mathrm{s}$ duration, and there is an indication for intermittency in the p-values for that segment duration.}
 \label{fig:rhessi_pvalues}
 \end{center}
@@ -179,7 +180,7 @@ While previous studies constrained themselves to a single (arbitrary) segment le
 
 \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=\textwidth]{f5.eps}
+\includegraphics[width=\textwidth]{f8.pdf}
 \caption{\rhessi data: observed p-values versus $600$ simulations for different segment lengths. The colour map in the background corresponds encodes the p-value that simulated light curves with a QPO of $2$ second duration and a fractional rms amplitude of $0.1$ in every rotational cycle is likely to have in dependence of the number of averaged cycles. We plot the p-values derived from the \rhessi data as light blue triangles.}
 
 \label{fig:rhessi_sims1_pvalues}
@@ -195,7 +196,7 @@ Because the signal-to-noise ratio is much lower for the \rhessi data than the \r
 
  \begin{figure*}[htbp]
 \begin{center}
-\includegraphics[width=\textwidth]{f7.eps}
+\includegraphics[width=\textwidth]{f9.pdf}
 \caption{\rhessi data: observed p-values versus $600$ simulations for different segment lengths. The colour map in the background corresponds encodes the p-value of simulated light curves with a QPO of $1$ second duration and a fractional rms amplitude of $0.4$ in the strongest cycle, as well as weaker sinusoidal signals in the preceding cycle as well as the second-to-last four cycles. We plot the p-values derived from the \rhessi data as light blue triangles.}
 \label{fig:rhessi_sims3_pvalues}
 \end{center}
