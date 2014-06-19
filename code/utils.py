@@ -7,15 +7,16 @@
 #
 #
 
-
-
-__author__ = 'daniela'
-
-
 from __future__ import with_statement
 from collections import defaultdict
 
 import numpy as np
+
+__author__ = 'daniela'
+
+
+
+
 
 
 def conversion(filename):
@@ -42,6 +43,40 @@ def conversion(filename):
                  output_lists[col].append(data)
     return output_lists
 
+
+def rebin_lightcurve(times, counts, n=10, type='average'):
+    """
+    quick and dirty rebinning of light curves, integer multiples
+    of time resolution only.
+    times: time stamps of original light curve
+    counts: counts per bin in original light curve
+    n: number of original time bins in new time bin
+    type: either "average"(= "mean") or "sum"
+
+    """
+
+    nbins = int(len(times)/n)
+    dt = times[1] - times[0]
+    T = times[-1] - times[0] + dt
+    bin_dt = dt*n
+    bintimes = np.arange(nbins)*bin_dt + bin_dt/2.0 + times[0]
+
+    nbins_new = int(len(counts)/n)
+    counts_new = counts[:nbins_new*n]
+    bincounts = np.reshape(np.array(counts_new), (nbins_new, n))
+    bincounts = np.sum(bincounts, axis=1)
+    if type in ["average", "mean"]:
+        bincounts = bincounts/np.float(n)
+    else:
+        bincounts = bincounts
+
+    #bincounts = np.array([np.sum(counts[i*n:i*n+n]) for i in range(nbins)])/np.float(n)
+    #print("len(bintimes): " + str(len(bintimes)))
+    #print("len(bincounts: " + str(len(bincounts)))
+    if len(bintimes) < len(bincounts):
+        bincounts = bincounts[:len(bintimes)]
+
+    return bintimes, bincounts
 
 
 def compute_pval(allstack, allstack_sims):

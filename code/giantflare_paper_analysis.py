@@ -37,7 +37,6 @@ from utils import *
 import lightcurve
 import giantflare
 
-
 from pylab import *
 import matplotlib.cm as cm
 rc("font", size=20, family="serif", serif="Computer Sans")
