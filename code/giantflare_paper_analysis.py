@@ -36,7 +36,6 @@ from utils import *
 
 import lightcurve
 import giantflare
-import classical_significances as cs
 
 
 from pylab import *
@@ -792,7 +791,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
 
             else:
 
-                pval_single = cs.pavnosig(np.max(a), float(i+1))
+                pval_single = pavnosig(np.max(a), float(i+1))
                 pvals.append(pval_single)
 
             ### plot distributions of maximum powers against theoretical expectations?
@@ -1141,10 +1140,10 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
                 pvals.append(pvals_temp)
 
             else:
-                pvals_data_temp = cs.pavnosig(np.max(allstack[i]), float(i+1))
+                pvals_data_temp = pavnosig(np.max(allstack[i]), float(i+1))
                 print(pvals_data_temp)
                 pvals_data.append(pvals_data_temp)
-                pvals_temp = [cs.pavnosig(np.max(a), (i+1)) for a in allstack_qpo[:,i]]
+                pvals_temp = [pavnosig(np.max(a), (i+1)) for a in allstack_qpo[:,i]]
                 pvals.append(pvals_temp)
 
             h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-6.0, 0.0])
