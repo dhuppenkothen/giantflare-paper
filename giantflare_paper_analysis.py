@@ -23,8 +23,9 @@
 #       powerspectrum.py in UTools repository
 #       envelopes.py in UTools repository
 
+from __future__ import with_statement
+from collections import defaultdict
 
-import generaltools as gt
 import numpy as np
 import cPickle as pickle
 import glob
@@ -32,13 +33,43 @@ import scipy.interpolate
 
 import lightcurve
 import giantflare
-
+import classical_significances as cs
 
 
 from pylab import *
 import matplotlib.cm as cm
 rc("font", size=20, family="serif", serif="Computer Sans")
 rc("text", usetex=True)
+
+##############################################################
+###### FIRST PART: GENERAL AUXILIARY FUNCTIONS ###############
+##############################################################
+
+
+def conversion(filename):
+    """
+    This is a useful little function that reads
+    data from file and stores it in a dictionary
+    with as many lists as the file had columns.
+    The dictionary has the following architecture
+    (e.g. for a file with three columns):
+
+    {'0':[1st column data], '1':[2nd column data], '2':[3rd column data]}
+
+    NOTE: Each element of the lists is still a *STRING*, because
+    the function doesn't make an assumption about what type of data
+    you're trying to read! Numbers need to be converted before using them!
+    """
+
+    f=open(filename, 'r')
+    output_lists=defaultdict(list)
+    for line in f:
+        if not line.startswith('#'):
+             line=[value for value in line.split()]
+             for col, data in enumerate(line):
+                 output_lists[col].append(data)
+    return output_lists
+
 
 
 def compute_pval(allstack, allstack_sims):
@@ -88,7 +119,7 @@ def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
      Default channels to be included are 10-200, also from Strohmayer+Watts 2006
     """
 
-    data = gt.conversion('%s1806.dat'%datadir)
+    data = conversion('%s1806.dat'%datadir)
     time = np.array([float(x) for x in data[0]])
     channels = np.array([float(x) for x in data[1]])
     time = np.array([t for t,c in zip(time, channels) if climits[0] <= c <= climits[1]])
@@ -663,7 +694,7 @@ def load_rhessi_data(datadir="./", tstart=80.0, tend=236.0, climits=[100.0, 200.
      Default segments (seglimits) to be included are 0-7, as in Watts+Strohmayer 2006
     """
 
-    data = gt.conversion('%s1806_rhessi.dat'%datadir)
+    data = conversion('%s1806_rhessi.dat'%datadir)
     time = np.array([float(x) for x in data[0]])
     channels = np.array([float(x) for x in data[1]])
     segments = np.array([float(s) for s in data[2]])
@@ -729,7 +760,7 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
     return savgall
 
 def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df_all=[2.0, 1.0, 1.0, 1.0, 1.0],
-                               freq = [627.0, 627.0, 626.0, 626.5,626.0],
+                               freq = [627.0, 627.0, 626.0, 626.5,626.0], classical=False,
                                froot_in="1806_rhessi", froot_out="test", plotdist=True, maxpowers=True):
     """
     Take several simulation runs made with make_rhessi_sims() and read them out one after the other,
@@ -769,54 +800,61 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
 
         allstack_data.append(allstack)
 
-        if maxpowers is True:
-            print("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
-            maxp_all_files = glob.glob("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
-            print(maxp_all_files)
-            maxp_all = np.loadtxt(maxp_all_files[0])
-        else:
-            ### find all datafiles with string froot_in in their filename
-            print("%s*_tseg=%.1f*"%(froot_in,tseg))
-            savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
+        if classical is False:
+            if maxpowers is True:
+                print("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
+                maxp_all_files = glob.glob("%s*_tseg=%.1f*maxpowers.txt"%(froot_in,tseg))
+                print(maxp_all_files)
+                maxp_all = np.loadtxt(maxp_all_files[0])
+            else:
+                ### find all datafiles with string froot_in in their filename
+                print("%s*_tseg=%.1f*"%(froot_in,tseg))
+                savgfiles = glob.glob("%s*_tseg=%.1f*"%(froot_in,tseg))
 
-            print("Simulation files: " + str(savgfiles))
+                print("Simulation files: " + str(savgfiles))
 
-            maxp_all = []
-            for f in savgfiles:
+                maxp_all = []
+                for f in savgfiles:
 
-                ### load simulation output
-                savgtemp = np.loadtxt(f)
-                print("shape(savgtemp): " + str(np.shape(savgtemp)))
+                    ### load simulation output
+                    savgtemp = np.loadtxt(f)
+                    print("shape(savgtemp): " + str(np.shape(savgtemp)))
 
-                ### make averaged powers for each of the 10 cycles
-                allstack_temp = []
-                for s in savgtemp:
-                    allstack_temp.append(giantflare.make_stacks(s, 19, 30))
+                    ### make averaged powers for each of the 10 cycles
+                    allstack_temp = []
+                    for s in savgtemp:
+                        allstack_temp.append(giantflare.make_stacks(s, 19, 30))
 
-                maxp_temp = []
-                for i in xrange(len(allstack)):
-                    amax = np.array([np.max(a[i]) for a in allstack_temp])
-                    maxp_temp.append(amax)
+                    maxp_temp = []
+                    for i in xrange(len(allstack)):
+                        amax = np.array([np.max(a[i]) for a in allstack_temp])
+                        maxp_temp.append(amax)
 
-                maxp_temp = np.transpose(np.array(maxp_temp))
-                maxp_all.extend(maxp_temp)
+                    maxp_temp = np.transpose(np.array(maxp_temp))
+                    maxp_all.extend(maxp_temp)
 
-            maxp_all = np.array(maxp_all)
-            print("shape(maxp_all) " + str(np.shape(maxp_all)))
+                maxp_all = np.array(maxp_all)
+                print("shape(maxp_all) " + str(np.shape(maxp_all)))
 
-            np.savetxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_out, tseg), maxp_all)
+                np.savetxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_out, tseg), maxp_all)
 
         pvals = []
         for i,a in enumerate(allstack):
-            sims = maxp_all[:,i]
-            #print("sims " + str(sims))
 
-            sims_sort = np.sort(sims)
-            len_sims = np.float(len(sims_sort))
-            ind_sims = sims_sort.searchsorted(max(a))
+            if classical is False:
+                sims = maxp_all[:,i]
+                #print("sims " + str(sims))
 
-            pvals.append((len_sims-ind_sims)/len(sims))
+                sims_sort = np.sort(sims)
+                len_sims = np.float(len(sims_sort))
+                ind_sims = sims_sort.searchsorted(np.max(a))
 
+                pvals.append((len_sims-ind_sims)/len(sims))
+
+            else:
+
+                pval_single = cs.pavnosig(np.max(a), float(i+1))
+                pvals.append(pval_single)
 
             ### plot distributions of maximum powers against theoretical expectations?
             if plotdist:
@@ -857,11 +895,17 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
         pvals_all.append(pvals)
 
         ### Compute theoretical error on p-values
-        pvals_error = pvalues_error(pvals, len(sims))
+        if classical is False:
+            pvals_error = pvalues_error(pvals, len(sims))
+        else:
+            pvals_error = pvalues_error(pvals, 10000000.0)
+
         perr_all.append(pvals_error)
 
-    np.savetxt("%s_pvals_all.txt"%froot_out, pvals_all)
-
+    if classical is False:
+        np.savetxt("%s_pvals_all.txt"%froot_out, pvals_all)
+    else:
+        np.savetxt("%s_pvals_all_classical.txt"%froot_out, pvals_all)
 
     colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
 
@@ -869,14 +913,20 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
 
-    for pv, pe, c, in zip(pvals_all, perr_all, colours[:len(pvals_all)]):
+    log_errors = [0.434*dp/p for dp,p in zip(perr_all, pvals_all)]
+
+    for pv, pe, c, in zip(pvals_all, log_errors, colours[:len(pvals_all)]):
     #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-        errorbar(np.arange(len(pv))+1, pv, yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
                  label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%tseg)
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel("P-value of maximum power", fontsize=20)
-    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%len_sims)
-    savefig("%s_pvals.png"%froot_out, format="png")
+    if classical is False:
+        title("SGR 1806-20, RHESSI data, p-values from %i simulations"%len_sims)
+        savefig("%s_pvals.png"%froot_out, format="png")
+    else:
+        title("SGR 1806-20, RHESSI data, classical p-values")
+        savefig("%s_pvals_classical.png"%froot_out, format="png")
     close()
 
     return pvals_all
@@ -973,7 +1023,7 @@ def rhessi_qpo_sims_allcycles_randomised(nsims=1000, froot="1806_rhessi"):
                     175.70906353,  183.28972721,  190.86196136,  198.43483257,
                     206.01998615,  213.58804893,  221.17355442]
 
-    amp_all = [0.1 for t in tstart_all]
+    amp_all = [0.3 for t in tstart_all]
     freq_all = [626.5 for t in tstart_all]
     randomphase_all = [True for t in tstart_all]
     length_all = [2.0 for t in tstart_all]
@@ -1005,7 +1055,8 @@ def rhessi_qpo_sims_singlecycle(nsims=1000, froot="1806_rhessi"):
     return
 
 
-def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
+def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test",
+                         freq = [627.0, 627.0, 626.0, 626.5,626.0]):
     """
     This function makes simulations with QPOs for the RHESSI data, to compare the real results to
     what would come out of the analysis given a particular signal.
@@ -1030,31 +1081,31 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
         print("I am on simulation %i" %i)
         lcall, psall, mid, savg_05, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=0.5, df=2.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=freq[0])
 
         savgall_05.append(savg_05)
 
         lcall, psall, mid, savg_1, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=1.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=freq[1])
 
         savgall_1.append(savg_1)
 
         lcall, psall, mid, savg_15, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=1.5, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=freq[2])
 
         savgall_15.append(savg_15)
 
         lcall, psall, mid, savg_2, xerr, ntrials, sfreqs, spowers = \
         giantflare.search_singlepulse(lc, nsteps=30, tseg=2.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=freq[3])
 
         savgall_2.append(savg_2)
 
         lcall, psall, mid, savg_25, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(lc, nsteps=30, tseg=3.0, df=1.00, fnyquist=nsims, stack=None,
-                                      setlc=True, freq=626.0)
+        giantflare.search_singlepulse(lc, nsteps=30, tseg=2.5, df=1.00, fnyquist=nsims, stack=None,
+                                      setlc=True, freq=freq[4])
         savgall_25.append(savg_25)
 
 
@@ -1070,7 +1121,7 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test"):
 
 
 def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="sgr1806_rhessi",
-                           froot_sims="allcycles"):
+                           froot_sims="allcycles", classical=False, freq=[627.0, 627.0, 626.0, 626.5,626.0]):
 
     ### if tnew isn't given, read in:
     tnew = load_rhessi_data()
@@ -1086,12 +1137,12 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
 
     ### loop over all values of the segment lengths and frequency resolutions
-    for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
+    for k,(f, tseg, df) in enumerate(zip(freq, tseg_all, df_all)):
         ### extract maximum powers from data.
         ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
         lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
             giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
-                                      setlc=True, freq=626.0)
+                                      setlc=True, freq=f)
 
 
         savg_data.append(savg)
@@ -1100,15 +1151,16 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
         allstack_data.append(allstack)
 
-        maxp_all = np.loadtxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_in, tseg))
+        if classical is False:
+            maxp_all = np.loadtxt("%s_tseg=%.1f_simulated_maxpowers.txt"%(froot_in, tseg))
 
-        ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
-        ### the index of the power that corresponds to the observed one to compute p-value
-        #maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
-        ### transpose maxp, such that it's of the shape [nsims, ncycles]
-        #maxp_sorted = np.transpose(maxp_all)
+            ### sort powers for each ncycle from smallest to highest, such that I can simply use searchsorted to find
+            ### the index of the power that corresponds to the observed one to compute p-value
+            #maxp_sorted = np.array([np.sort(maxp_all[:,i]) for i in xrange(len(allstack))])
+            ### transpose maxp, such that it's of the shape [nsims, ncycles]
+            #maxp_sorted = np.transpose(maxp_all)
 
-        print("shape(maxp_sorted) " + str(np.shape(maxp_all)))
+            print("shape(maxp_sorted) " + str(np.shape(maxp_all)))
 
         ### load fake data, i.e. simulations *WITH* qpo
         qpofiles = glob.glob("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
@@ -1129,27 +1181,34 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         pvals, pvals_hist = [], []
         for i in xrange(len(allstack)):
 
+            if classical is False:
                 ### these are the simulations WITHOUT QPO
-            sims = maxp_all[:,i]
-            sims = np.sort(sims)
-            len_sims = np.float(len(sims))
-            print("len_sims %i" %len_sims)
-            print("sims[0:10] " + str(sims[0:10]))
-            print("sims[-10:] " + str(sims[-10:]))
+                sims = maxp_all[:,i]
+                sims = np.sort(sims)
+                len_sims = np.float(len(sims))
+                print("len_sims %i" %len_sims)
+                print("sims[0:10] " + str(sims[0:10]))
+                print("sims[-10:] " + str(sims[-10:]))
 
 
-            ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
-            pvals_data.append((len_sims-ind_data)/len_sims)
+                ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
+                pvals_data.append((len_sims-ind_data)/len_sims)
 
-            ### find index in sorted simulations without QPO that correspond to the observed maximum power
-            ### for the simulated light curve with QPO
-            ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
-            pvals_temp = (len_sims-ind_temp)/len_sims
+                ### find index in sorted simulations without QPO that correspond to the observed maximum power
+                ### for the simulated light curve with QPO
+                ind_temp = np.array([np.float(sims.searchsorted(np.max(a))) for a in allstack_qpo[:,i]])
+                pvals_temp = (len_sims-ind_temp)/len_sims
 
-            pvals.append(pvals_temp)
+                pvals.append(pvals_temp)
 
+            else:
+                pvals_data_temp = cs.pavnosig(np.max(allstack[i]), float(i+1))
+                print(pvals_data_temp)
+                pvals_data.append(pvals_data_temp)
+                pvals_temp = [cs.pavnosig(np.max(a), (i+1)) for a in allstack_qpo[:,i]]
+                pvals.append(pvals_temp)
 
-            h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-4.1, 0.0])
+            h, bins = np.histogram(np.log10(pvals_temp), bins=nbins, range=[-6.0, 0.0])
             pvals_hist.append(h[::-1])
 
         print("shape(pvals): " + str(np.shape(pvals)))
@@ -1163,21 +1222,27 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
         #print("froot_in %s" %froot_in)
         #print("froot_sims: %s" %froot_sims)
         #print("tseg: %f" %tseg)
-
-        np.savetxt("%s_%s_tseg=%.1f_pvals.txt"%(froot_in, froot_sims, tseg), pvals)
+        if classical is False:
+            np.savetxt("%s_%s_tseg=%.1f_pvals.txt"%(froot_in, froot_sims, tseg), pvals)
+        else:
+            np.savetxt("%s_%s_tseg=%.1f_pvals_classical.txt"%(froot_in, froot_sims, tseg), pvals)
 
         ax = fig.add_subplot(2,2,k+1)
-        ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -4.1,0.0])
+        ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -6.1,0.0])
         ax.set_aspect(3)
         print('len(pvals_data): ' + str(len(pvals_data)))
         scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
                 edgecolor="cyan", marker="v")
-        axis([0,len(allstack), -4.1, 0.0])
+        axis([0,len(allstack), -6.1, 0.0])
         xlabel("Number of averaged cycles", fontsize=20)
         ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
         title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
 
-    savefig("%s_%s_pvals_sims.png"%(froot_in, froot_sims), format="png")
+    if classical is False:
+        savefig("%s_%s_pvals_sims.png"%(froot_in, froot_sims), format="png")
+    else:
+        savefig("%s_%s_pvals_sims_classical.png"%(froot_in, froot_sims), format="png")
+
     close()
 
     return pvals_all, pvals_hist_all
