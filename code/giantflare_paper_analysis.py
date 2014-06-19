@@ -2,6 +2,10 @@
 
 ### SCRIPT THAT MAKES PLOTS FOR GIANT FLARE PAPER
 #
+# First part contains RXTE analysis, second part RHESSI
+# Last part makes all plots, provided all data files are there.
+#
+#
 # Needs the following data files
 #
 # - 1806.dat --> ASCII file with RXTE giant flare data
@@ -28,6 +32,8 @@ import numpy as np
 import glob
 import scipy.interpolate
 
+from utils import *
+
 import lightcurve
 import giantflare
 import classical_significances as cs
@@ -39,15 +45,16 @@ rc("font", size=20, family="serif", serif="Computer Sans")
 rc("text", usetex=True)
 
 
-
+#########################################################
 ##### FIRST BIT: RXTE ANALYSIS AND PLOTS! ###############
+#########################################################
 
 def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
 
     """
      Load Giant Flare RXTE data from file.
      Default value for tstart is the one from Strohmayer+Watts 2006 (determined by squinting at Figure 1).
-     Default channels to be included are 10-200, also from Strohmayer+Watts 2006
+     Default channels to be included are 10-200, which is what Strohmayer+Watts 2006 write, but didn't do.
     """
 
     data = conversion('%s1806.dat'%datadir)
@@ -66,7 +73,8 @@ def rxte_pvalues(maxpowfile="sgr1806_rxte_simulated_maxpowers.txt"):
 
     """
     Makes Figure 2 of the paper.
-    Uses a file with simulations from make_rxte_sims(). If you don't want to use the provided file, make it yourself,
+    Uses a file with simulations from make_rxte_sims(). If you don't want to use the provided file,
+    make it yourself,
     but be warned that it takes a while!
 
     """
