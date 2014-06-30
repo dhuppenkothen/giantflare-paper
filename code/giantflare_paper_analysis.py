@@ -1184,6 +1184,9 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
 
     return pvals_all, pvals_hist_all
 
+
+
+
 ######################################################################################################################
 ####### ALL PLOTS ####################################################################################################
 ######################################################################################################################
@@ -1807,6 +1810,104 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 
         close()
 
     return
+
+
+
+
+##### TEMP SCRIPTS
+def rhessi_qpo_powers_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="sgr1806_rhessi",
+                           froot_sims="allcycles", freq=[627.0, 627.0, 626.0, 626.5,626.0]):
+
+    ### if tnew isn't given, read in:
+    tnew = load_rhessi_data()
+
+    savg_data, allstack_data = [], []
+
+    pvals_all, perr_all = [], []
+
+    print("froot_in: %s" %froot_in)
+
+    fig = figure(figsize=(24,18))
+    subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+
+    ### loop over all values of the segment lengths and frequency resolutions
+    for k,(f, tseg, df) in enumerate(zip(freq, tseg_all, df_all)):
+
+        fig = figure(figsize=(24,18))
+        subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
+
+        ### extract maximum powers from data.
+        ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
+        lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
+            giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
+                                      setlc=True, freq=f)
+
+
+        savg_data.append(savg)
+        ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
+        allstack = giantflare.make_stacks(savg, 19, 30)
+
+        allstack_data.append(allstack)
+
+
+        ### load fake data, i.e. simulations *WITH* qpo
+        qpofiles = glob.glob("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+        print("qpofiles: " + str(qpofiles))
+        print("%s*_%s_tseg=%.1f*savgall.txt"%(froot_in,froot_sims, tseg))
+
+        pvals_all, pvals_data, pvals_hist_all = [], [], []
+        ### allow for qpo simulations to be broken up into several parts
+        for j,q in enumerate(qpofiles):
+            savg_qpo = np.loadtxt(q)
+            ### make averaged powers for each of the 10 cycles
+            allstack_qpo = []
+            for s in savg_qpo:
+                allstack_qpo.append(giantflare.make_stacks(s, 19, 30))
+
+            allstack_qpo = np.array(allstack_qpo)
+
+        pvals, pvals_hist = [], []
+
+        min_sim, max_sim = [], []
+        for i in xrange(len(allstack)):
+
+            ax = fig.add_subplot(5,4,(i+1))
+            max_qpo = np.array([np.max(a) for a in allstack_qpo[:,i]])
+            min_sim.append(np.min(max_qpo))
+            max_sim.append(np.max(max_qpo))
+            pvals.append(np.max(allstack[i]))
+
+
+            h, bins, patches = ax.hist(max_qpo, bins=nbins, range=[np.min(max_qpo), np.max(max_qpo)],
+                                       histtype="stepfilled", color="cyan")
+            vlines(np.max(allstack[i]), 0, np.max(h), lw=2, color="black", linestyle="dashed")
+            pvals_hist.append(h[::-1])
+
+        print("shape(pvals): " + str(np.shape(pvals)))
+        print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
+
+        pvals_all.append(pvals)
+        pvals_hist_all.append(pvals_hist)
+
+
+        #ax = fig.add_subplot(2,2,k+1)
+        #ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), ])
+        #ax.set_aspect(3)
+        ##print('len(pvals_data): ' + str(len(pvals_data)))
+        #scatter(np.arange(19)+0.5, np.log10(pvals_all), lw=1, facecolor="LightGoldenRodYellow",
+        #        edgecolor="cyan", marker="v")
+        #axis([0,len(allstack), -6.1, 0.0])
+        #xlabel("Number of averaged cycles", fontsize=20)
+        #ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=20)
+        title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
+
+        savefig("%s_%s_tseg=%.2f_powers_sims.png"%(froot_in, froot_sims,tseg), format="png")
+
+        close()
+
+    return #pvals_all, pvals_hist_all
+
 
 
 
