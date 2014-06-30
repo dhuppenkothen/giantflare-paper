@@ -31,6 +31,7 @@
 import numpy as np
 import glob
 import scipy.interpolate
+import scipy.ndimage
 
 from utils import *
 
@@ -39,6 +40,8 @@ import giantflare
 
 from pylab import *
 import matplotlib.cm as cm
+from matplotlib.patches import FancyArrow
+
 rc("font", size=20, family="serif", serif="Computer Sans")
 rc("text", usetex=True)
 
@@ -696,9 +699,9 @@ def make_rhessi_sims(tnew=None, tseg_all=None, df_all=None, nsims=30000,save=Tru
 
     return savgall
 
-def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df_all=[2.0, 1.0, 1.0, 1.0, 1.0],
-                               freq = [627.0, 627.0, 626.0, 626.5,626.0], classical=False,
-                               froot_in="1806_rhessi", froot_out="test", plotdist=True, maxpowers=True):
+def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 2.0, 2.5], df_all=[2.0, 1.0, 1.0, 1.0],
+                               freq = [627.0, 627.0, 626.5,626.0], classical=False,
+                               froot_in="sgr1806_rhessi", froot_out="test", plotdist=True, maxpowers=True):
     """
     Take several simulation runs made with make_rhessi_sims() and read them out one after the other,
     to avoid memory problems when running make_stacks for very large runs.
@@ -718,8 +721,17 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
 
     pvals_all, perr_all = [], []
 
+    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
+
+    ### plot p-values
+    fig = figure(figsize=(12,9))
+    ax = fig.add_subplot(111)
+
+    print("tseg_all: " + str(tseg_all))
+    print("df_all: " + str(df_all))
+    print("freq: " + str(freq))
     ### loop over all values of the segment lengths and frequency resolutions
-    for tseg, df,f in zip(tseg_all, df_all,freq):
+    for tseg, df,f,c in zip(tseg_all, df_all,freq, colours):
     ### extract maximum powers from data.
     ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
         lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
@@ -831,40 +843,68 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 1.5, 2.0, 2.5], df
         pvals = np.array(pvals)
         pvals_all.append(pvals)
 
+        pvals_noul, pvals_ul = [], []
+
+        cycles = list(np.arange(len(pvals)))
+        cycles_ul, cycles_noul = [], []
+        for i,p in enumerate(pvals):
+            if p == 0.0:
+                pvals_ul.append(1.0/len_sims)
+                pvals[i] = 1.0/len_sims
+                cycles_ul.append(i)
+            else:
+                pvals_noul.append(p)
+                cycles_noul.append(i)
+
+        pvals = np.log10(np.array(pvals))
+        pvals_noul = np.log10(np.array(pvals_noul))
+        pvals_ul = np.log10(np.array(pvals_ul))
+
+        cycles = np.array(cycles)
+        cycles_noul = np.array(cycles_noul)
+        cycles_ul = np.array(cycles_ul)
+
+
         ### Compute theoretical error on p-values
         if classical is False:
-            pvals_error = pvalues_error(pvals, len(sims))
+            pvals_error = pvalues_error(pvals_noul, len(sims))
         else:
-            pvals_error = pvalues_error(pvals, 10000000.0)
+            pvals_error = pvalues_error(pvals_noul, 10000000.0)
 
         perr_all.append(pvals_error)
+
+        log_errors = 0.434*np.array(pvals_error)/np.array(pvals_noul)
+
+        ax.scatter(cycles+1, pvals, marker="o", s=32, color=c)
+        ax.plot(cycles+1, pvals, lw=3, color=c)
+        errorbar(cycles_noul+1, pvals_noul, yerr=log_errors, fmt="o", lw=0, color=c, markersize=12,
+                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%tseg)
+
+        for cyc,pv in zip(cycles_ul, pvals_ul):
+            ar1 = FancyArrow(cyc+1, pv, 0.0, -1.0, length_includes_head=True,
+                color=c, head_width=0.2, head_length=0.3, width=0.001, linewidth=2)
+            ax.add_artist(ar1)
+
+
+    #for pv, pe, c, in zip(pvals_all, log_errors, colours[:len(pvals_all)]):
+    ##plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
+    #    errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+    #             label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%tseg)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    if classical is False:
+        title("SGR 1806-20, RHESSI data, p-values")
+        savefig("%s_pvals.png"%froot_out, format="png")
+    else:
+        title("SGR 1806-20, RHESSI data, classical p-values")
+        savefig("%s_pvals_classical.png"%froot_out, format="png")
+    close()
 
     if classical is False:
         np.savetxt("%s_pvals_all.txt"%froot_out, pvals_all)
     else:
         np.savetxt("%s_pvals_all_classical.txt"%froot_out, pvals_all)
 
-    colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
-
-    ### plot p-values
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-
-    log_errors = [0.434*dp/p for dp,p in zip(perr_all, pvals_all)]
-
-    for pv, pe, c, in zip(pvals_all, log_errors, colours[:len(pvals_all)]):
-    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
-                 label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%tseg)
-    xlabel("Number of averaged cycles", fontsize=20)
-    ylabel("P-value of maximum power", fontsize=20)
-    if classical is False:
-        title("SGR 1806-20, RHESSI data, p-values from %i simulations"%len_sims)
-        savefig("%s_pvals.png"%froot_out, format="png")
-    else:
-        title("SGR 1806-20, RHESSI data, classical p-values")
-        savefig("%s_pvals_classical.png"%froot_out, format="png")
-    close()
 
     return pvals_all
 
@@ -1058,7 +1098,7 @@ def make_rhessi_qpo_sims(nqpo, qpoparams, nsims=1000, froot="1806_rhessi_test",
 
 
 def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.0], nbins=30, froot_in="sgr1806_rhessi",
-                           froot_sims="allcycles", classical=False, freq=[627.0, 627.0, 626.0, 626.5,626.0]):
+                           froot_sims="allcycles", classical=False, freq=[627.0, 627.0, 626.5,626.0]):
 
     ### if tnew isn't given, read in:
     tnew = load_rhessi_data()
@@ -1165,7 +1205,9 @@ def rhessi_qpo_sims_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 1.
             np.savetxt("%s_%s_tseg=%.1f_pvals_classical.txt"%(froot_in, froot_sims, tseg), pvals)
 
         ax = fig.add_subplot(2,2,k+1)
+        znew = scipy.ndimage.gaussian_filter(pvals_hist, sigma=4.0, order=0)
         ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0,len(allstack), -6.1,0.0])
+
         ax.set_aspect(3)
         print('len(pvals_data): ' + str(len(pvals_data)))
         scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=1, facecolor="LightGoldenRodYellow",
@@ -1697,7 +1739,7 @@ def plot_rxte_sims_singlecycle(froot="1806_rxte_strongestcycle"):
     return
 
 
-def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1.5,2.0,2.5],
+def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,2.0,2.5],
                        nsims=30000):
 
     """
@@ -1713,11 +1755,11 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
     pvals_all = np.loadtxt(filename)
     print("shape pvals_all: "+ str(np.shape(pvals_all)))
 
-    pvals_error = [pvalues_error(pvals, nsims) for pvals in pvals_all]
-    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+    #pvals_error = [pvalues_error(pvals, nsims) for pvals in pvals_all]
+    #print("shape(pvals_error): " + str(np.shape(pvals_error)))
 
-    log_errors = [0.434*dp/p for dp,p in zip(pvals_error, pvals_all)]
-    print("shape(pvals_error): " + str(np.shape(pvals_error)))
+    #log_errors = [0.434*dp/p for dp,p in zip(pvals_error, pvals_all)]
+    #print("shape(pvals_error): " + str(np.shape(pvals_error)))
 
     colours= ["navy", "magenta", "cyan", "orange", "mediumseagreen", "black", "blue", "red"]
 
@@ -1726,15 +1768,51 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
 
-    for ts, pv, pe, c, in zip(tseg, pvals_all, log_errors, colours[:len(pvals_all)]):
-    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-        errorbar(np.arange(len(pv))+1, np.log10(pv), yerr=pe, fmt="-o", lw=3, color=c, markersize=12,
+    nsims = [10000.0, 10000.0, 1.0/1.21951220e-06 , 10000.0]
+
+    for ts, n, pv, c, in zip(tseg, nsims, pvals_all,colours[:len(pvals_all)]):
+        pvals = np.array(pv)
+
+        pvals_noul, pvals_ul = [], []
+
+        cycles = list(np.arange(len(pvals)))
+        cycles_ul, cycles_noul = [], []
+        for i,p in enumerate(pvals):
+            if p <= 1.0/n:
+                pvals_ul.append(1.0/n)
+                cycles_ul.append(i)
+            else:
+                pvals_noul.append(p)
+                cycles_noul.append(i)
+
+        pvals = np.log10(np.array(pvals))
+        pvals_noul = np.log10(np.array(pvals_noul))
+        pvals_ul = np.log10(np.array(pvals_ul))
+
+        cycles = np.array(cycles)
+        cycles_noul = np.array(cycles_noul)
+        cycles_ul = np.array(cycles_ul)
+
+
+        pvals_error = pvalues_error(pvals_noul, n)
+        log_errors = 0.434*np.array(pvals_error)/np.array(pvals_noul)
+
+
+        ax.scatter(cycles+1, pvals, marker="o", s=42, color=c, edgecolor="black")
+        ax.plot(cycles+1, pvals, lw=3, color=c)
+        errorbar(cycles_noul+1, pvals_noul, yerr=log_errors, fmt="o", lw=0, color=c, markersize=10,
                  label=r"$t_{\mathrm{seg}} = %.1f \, \mathrm{s}$"%ts)
+
+        for cyc,p in zip(cycles_ul, pvals_ul):
+            ar1 = FancyArrow(cyc+1, p, 0.0, -1.0, length_includes_head=True,
+                color=c, head_width=0.2, head_length=0.3, width=0.001, linewidth=2)
+            ax.add_artist(ar1)
+
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel(r"$\log_{10}{(\mathrm{p-value\; of\; maximum\; power})}$", fontsize=20)
     legend(loc="upper right", prop={"size":16})
-    axis([0,20,-np.log10(1.0/nsims), 0.5])
-    title("SGR 1806-20, RHESSI data, p-values from %i simulations"%nsims)
+    axis([0,20,-7.1, 0.5])
+    title("SGR 1806-20, RHESSI data, p-values ")
     savefig("f7.pdf", format="pdf")
     close()
 
@@ -1742,13 +1820,15 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,1
 
 
 
-def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0]):
+def plot_rhessi_qpo_simulations(tnew=None, tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 1.0, 1.0, 1.0],
+                                freq=[627.0, 627.0, 626.5,626.0]):
 
-    tnew = load_rhessi_data()
+    if tnew is None:
+        tnew = load_rhessi_data()
 
 
 
-    for f,namestr in enumerate(["allcycles", "allcycles_randomised", "singlecycle"]):
+    for f,namestr in enumerate(["allcycles", "singlecycle"]):
 
         fig = figure(figsize=(24,18))
         subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.1, hspace=0.2)
@@ -1756,12 +1836,12 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 
 
 
         ### loop over all values of the segment lengths and frequency resolutions
-        for k,(tseg, df) in enumerate(zip(tseg_all, df_all)):
+        for k,(tseg, df, fr) in enumerate(zip(tseg_all, df_all, freq)):
             ### extract maximum powers from data.
             ### Note: The RHESSI QPO is at slightly higher frequency, thus using 626.0 Hz
             lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
                 giantflare.search_singlepulse(tnew, nsteps=30, tseg=tseg, df=df, fnyquist=1000.0, stack=None,
-                                              setlc=True, freq=626.0)
+                                              setlc=True, freq=fr)
 
 
             ### make averaged powers for consecutive cycles, up to 19, for each of the nsteps segments per cycle:
@@ -1786,7 +1866,11 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 
 
 
                 ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
-                pvals_data.append((len_sims-ind_data)/len_sims)
+                pd = (len_sims-ind_data)/len_sims
+                if pd == 0.0:
+                    pd = 1.0/len_sims
+
+                pvals_data.append(pd)
 
 
                 h, bins = np.histogram(np.log10(pvals[i]), bins=10, range=[-4.1, 0.0])
@@ -1796,17 +1880,29 @@ def plot_rhessi_qpo_simulations(tseg_all=[0.5,1.0,2.0,2.5], df_all = [2.0, 1.0, 
             #print("pvals_data for tseg = %.1f: "%(tseg) + str(pvals_data))
 
             ax = fig.add_subplot(2,2,k+1)
-            ax.imshow(np.transpose(pvals_hist), cmap=cm.hot, extent=[0.0,len(allstack), -4.1,0.0])
+            znew = scipy.ndimage.gaussian_filter(np.transpose(pvals_hist), sigma=0.5, order=0)
+            ax.imshow(znew, cmap=cm.hot, extent=[0.0,len(allstack), -7.1,0.0], interpolation="bicubic")
             ax.set_aspect(3)
             print('len(pvals_data): ' + str(len(pvals_data)))
+            print("log10(pvals_data): " + str(np.log10(pvals_data)))
             scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=2, facecolor="LightGoldenRodYellow",
                     edgecolor="cyan", marker="v", s=50)
-            axis([0,len(allstack), -4.1, 0.0])
+            for i,pd in enumerate(np.log10(pvals_data)):
+                if pd <= np.log10(1.0/len_sims):
+                    ar1 = FancyArrow(i+0.5, pd, 0.0, -1.0, length_includes_head=True,
+                                     color="cyan", head_width=0.2,
+                                     head_length=0.3, width=0.001, linewidth=2)
+                    ax.add_artist(ar1)
+
+
+            axis([0,len(allstack), -7.1, 0.0])
             xlabel("Number of averaged cycles", fontsize=24)
             ylabel(r"$\log_{10}{(\mathrm{p-value})}$", fontsize=24)
             title(r"simulated p-values, $t_{\mathrm{seg}} = %.1f$"%tseg)
 
-        savefig("f%i.eps"%(f+8), format="eps")
+        draw()
+        tight_layout()
+        savefig("f%i.pdf"%(f+8), format="pdf")
         close()
 
     return
