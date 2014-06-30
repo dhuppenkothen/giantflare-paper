@@ -1553,7 +1553,7 @@ def make_analysis_schematic():
         hlines(6.5+ylen, t+1.5-0.09, t+1.0+2.0*np.pi+0.1, lw=4, color=c)
         middlevx = ((t+1.0+2.0*np.pi) - (t+1.5))/2.0 + t+1.5
         vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
-        ax.text(middlevx-0.8+ylen*2.8,7.6+(ylen*1.2), r"$P_{\mathrm{sim,1}}$", verticalalignment='center',
+        ax.text(middlevx-0.8+ylen*2.8,7.6+(ylen*1.2), r"$P_{\mathrm{avg,1}}$", verticalalignment='center',
                 horizontalalignment='center', color=c, fontsize=22)
 
         vlines(t+2.0+2.0*np.pi, 6.0, 6.5+ylen, lw=4, color=c)
@@ -1561,7 +1561,7 @@ def make_analysis_schematic():
         hlines(6.5+ylen, t+2.0*np.pi+2.0-0.09, t+1.5+4.0*np.pi+0.1, lw=4, color=c)
         middlevx = ((t+1.5+4.0*np.pi) - (t+2.0+2.0*np.pi))/2.0 + t+2.0+2.0*np.pi
         vlines(middlevx, 6.5+ylen, 7.4+ylen, lw=4, color=c)
-        ax.text(middlevx-2.1+ylen*2.8, 7.35+(ylen*1.2), r"$P_{\mathrm{sim,2}}$", verticalalignment='bottom',
+        ax.text(middlevx-2.1+ylen*2.8, 7.35+(ylen*1.2), r"$P_{\mathrm{avg,2}}$", verticalalignment='bottom',
                 horizontalalignment='left', color=c, fontsize=22)
 
 
