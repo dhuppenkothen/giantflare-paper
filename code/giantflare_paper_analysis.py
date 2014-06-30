@@ -850,7 +850,7 @@ def rhessi_simulations_results(tnew=None, tseg_all=[0.5, 1.0, 2.0, 2.5], df_all=
         for i,p in enumerate(pvals):
             if p == 0.0:
                 pvals_ul.append(1.0/len_sims)
-                pvals[i] = 1.0/len_sims
+                #pvals[i] = 1.0/len_sims
                 cycles_ul.append(i)
             else:
                 pvals_noul.append(p)
@@ -1765,7 +1765,7 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,2
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
 
-    nsims = [10000.0, 10000.0, 1.0/1.21951220e-06 , 10000.0]
+    nsims = [10000.0, 10000.0, 1075000.0 , 10000.0]
 
     for ts, n, pv, c, in zip(tseg, nsims, pvals_all,colours[:len(pvals_all)]):
         pvals = np.array(pv)
@@ -1775,8 +1775,9 @@ def plot_rhessi_pvalues(filename="sgr1806_rhessi_pvals_all.txt", tseg=[0.5,1.0,2
         cycles = list(np.arange(len(pvals)))
         cycles_ul, cycles_noul = [], []
         for i,p in enumerate(pvals):
-            if p <= 1.0/n:
+            if p < 1.0/n:
                 pvals_ul.append(1.0/n)
+                pvals[i] = 1.0/n
                 cycles_ul.append(i)
             else:
                 pvals_noul.append(p)
@@ -1850,13 +1851,15 @@ def plot_rhessi_qpo_simulations(tnew=None, tseg_all=[0.5,1.0,2.0,2.5], df_all = 
             pvals = np.loadtxt("sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
             print("pvals file: sgr1806_rhessi_%s_tseg=%.1f_pvals.txt"%(namestr, tseg))
 
-            pvals_data, pvals_hist = [], []
+            pvals_data, pv_data_corr, pvals_hist = [], [], []
+            len_sims_all = []
             for i in xrange(len(allstack)):
 
                     ### these are the simulations WITHOUT QPO
                 sims = maxp_all[:,i]
                 sims = np.sort(sims)
                 len_sims = np.float(len(sims))
+                print("Using %i simulations."%len_sims)
                 #print("len_sims %i" %len_sims)
                 #print("sims[0:10] " + str(sims[0:10]))
                 #print("sims[-10:] " + str(sims[-10:]))
@@ -1864,11 +1867,18 @@ def plot_rhessi_qpo_simulations(tnew=None, tseg_all=[0.5,1.0,2.0,2.5], df_all = 
 
                 ind_data = np.float(sims.searchsorted(np.max(allstack[i])))
                 pd = (len_sims-ind_data)/len_sims
-                if pd == 0.0:
-                    pd = 1.0/len_sims
+                len_sims_all.append(len_sims)
+                #if pd == 0.0:
+                #    pd = 1.0/len_sims
 
                 pvals_data.append(pd)
 
+                print("pd: " + str(pd))
+
+                if pd == 0:
+                    pv_data_corr.append(1.0/len_sims)
+                else:
+                    pv_data_corr.append(pd)
 
                 h, bins = np.histogram(np.log10(pvals[i]), bins=10, range=[-4.1, 0.0])
                 pvals_hist.append(h[::-1])
@@ -1880,13 +1890,15 @@ def plot_rhessi_qpo_simulations(tnew=None, tseg_all=[0.5,1.0,2.0,2.5], df_all = 
             znew = scipy.ndimage.gaussian_filter(np.transpose(pvals_hist), sigma=0.5, order=0)
             ax.imshow(znew, cmap=cm.hot, extent=[0.0,len(allstack), -7.1,0.0], interpolation="bicubic")
             ax.set_aspect(3)
+
             print('len(pvals_data): ' + str(len(pvals_data)))
             print("log10(pvals_data): " + str(np.log10(pvals_data)))
-            scatter(np.arange(19)+0.5, np.log10(pvals_data), lw=2, facecolor="LightGoldenRodYellow",
+            scatter(np.arange(19)+0.5, np.log10(pv_data_corr), lw=2, facecolor="LightGoldenRodYellow",
                     edgecolor="cyan", marker="v", s=50)
-            for i,pd in enumerate(np.log10(pvals_data)):
-                if pd <= np.log10(1.0/len_sims):
-                    ar1 = FancyArrow(i+0.5, pd, 0.0, -1.0, length_includes_head=True,
+            for i,pd in enumerate(pvals_data):
+                print("pd: " + str(pd))
+                if pd == 0.0:
+                    ar1 = FancyArrow(i+0.5, np.log10(1.0/len_sims), 0.0, -1.0, length_includes_head=True,
                                      color="cyan", head_width=0.2,
                                      head_length=0.3, width=0.001, linewidth=2)
                     ax.add_artist(ar1)
