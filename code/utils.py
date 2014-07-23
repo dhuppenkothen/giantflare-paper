@@ -116,6 +116,32 @@ def pvalues_error(pval, n):
 
 
 
+def compute_quantiles(savg_all, quantiles=[0.05, 0.5, 0.95]):
+    """
+    Quick-and-dirty quantile calculation for simulated light curves.
+    Used in rxte_qpo_sims_singlecycle below.
+
+    savg_all needs to be of shape [nsims, nbins], where nsims is the number of simulated
+    light curves, and nbins is the number of bins within each light curve.
+    """
+
+    ### number of simulations
+    nsims = len(savg_all)
+
+    q_sims = np.array(quantiles)*nsims
+    print("q_sims: " + str(q_sims))
+
+    sq_all = []
+    for s in np.transpose(savg_all):
+        s_sort = np.sort(s)
+
+        sq = [s_sort[int(i)] for i in q_sims]
+        sq_all.append(sq)
+
+    return np.array(sq_all)
+
+
+
 def pavnosig(power, nspec, nsim=1.0e9):
 
     """

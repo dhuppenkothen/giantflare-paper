@@ -50,7 +50,7 @@ rc("text", usetex=True)
 ##### FIRST BIT: RXTE ANALYSIS AND PLOTS! ###############
 #########################################################
 
-def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
+def load_rxte_data(datadir="../data/", tstart=196.1, climits=[10,200]):
 
     """
      Load Giant Flare RXTE data from file.
@@ -70,7 +70,7 @@ def load_rxte_data(datadir="./", tstart=196.1, climits=[10,200]):
 
     return tnew
 
-def rxte_pvalues(maxpowfile="sgr1806_rxte_simulated_maxpowers.txt"):
+def rxte_pvalues(maxpowfile="../data/sgr1806_rxte_simulated_maxpowers.txt", savgallroot = None):
 
     """
     Makes Figure 2 of the paper.
@@ -82,7 +82,7 @@ def rxte_pvalues(maxpowfile="sgr1806_rxte_simulated_maxpowers.txt"):
 
 
     ### load RXTE data
-    tnew = load_rxte_data()
+    tnew = load_rxte_data(datadir="../data/")
 
     ### compute powers at 625 Hz for time segments of 3s duration, binned frequency resolution of 2.66 Hz,
     ### starting every 0.5(ish) seconds apart
@@ -107,54 +107,74 @@ def rxte_pvalues(maxpowfile="sgr1806_rxte_simulated_maxpowers.txt"):
     if not maxpowfile is None:
         maxp_all = np.loadtxt(maxpowfile)
 
-        pvals = []
-        for i,a in enumerate(allstack):
-            sims = maxp_all[:,i]
-            #print("sims " + str(sims))
-
-            sims_sort = np.sort(sims)
-            len_sims = np.float(len(sims_sort))
-            ind_sims = sims_sort.searchsorted(max(a))
-
-            pvals.append((len_sims-ind_sims)/len(sims))
-
-        pvals = np.array(pvals)
-        ### Compute theoretical error on p-values
-        pvals_err = pvalues_error(pvals, len(sims))
 
     else:
         ### load powers at 625 Hz from 40000 simulations with the QPO smoothed out:
         ### if file doesn't exist, load with function make_rxte_sims() below, but be warned that it takes a while
         ### (like a day or so) to run!
-        savgall_sims = np.loadtxt("1806_rxte_tseg=3.0_df=2.66_dt=0.5_f=625Hz_savgall_new.txt")
+        savgallfiles = glob.glob("%s*savgall.dat"%savgallroot)
+        maxp_all = []
+        for s in savgallfiles:
+            savgall_sims = np.loadtxt(s)
 
 
-        ### savgall_sims should be the direct output of giantflare.simulations, which means the first dimension
-        ### of the array are the individual segments, the second dimension the simulations.
-        ### Thus, for use with make_stacks, we need to transpose it.
-        if np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1]:
-            savgall_sims = np.transpose(savgall_sims)
+            ### savgall_sims should be the direct output of giantflare.simulations, which means the first dimension
+            ### of the array are the individual segments, the second dimension the simulations.
+            ### Thus, for use with make_stacks, we need to transpose it.
+            if np.shape(savgall_sims)[0] < np.shape(savgall_sims)[1]:
+                savgall_sims = np.transpose(savgall_sims)
 
-        ### make stacks of all simulations in the same way as for the real data
-        ### note that this could take a while and use a lot of memory!
-        allstack_sims = []
-        for s in savgall_sims:
-            allstack_sims.append(giantflare.make_stacks(s, 10, 10))
+            ### make stacks of all simulations in the same way as for the real data
+            ### note that this could take a while and use a lot of memory!
+            allstack_sims = []
+            for s in savgall_sims:
+                allstack_sims.append(giantflare.make_stacks(s, 10, 10))
+
+            maxp_temp = []
+            for i in xrange(len(allstack)):
+                amax = np.array([np.max(a[i]) for a in allstack_sims])
+                maxp_temp.append(amax)
+
+            maxp_temp = np.transpose(np.array(maxp_temp))
+            maxp_all.extend(maxp_temp)
+
+        maxp_all = np.array(maxp_all)
+
+        np.savetxt("%s_maxpowers.txt"%savgallroot)
 
 
-        ### Compute p-values from data (allstack) and simulations (allstack_sims)
-        pvals = compute_pval(allstack, allstack_sims)
+    pvals = []
+    for i,a in enumerate(allstack):
+        sims = maxp_all[:,i]
+        #print("sims " + str(sims))
 
-        ### Compute theoretical errors on p-values; sort of a fudge, but I think okay as a general idea:
-        pvals_err = pvalues_error(pvals, len(savgall_sims))
+        sims_sort = np.sort(sims)
+        len_sims = np.float(len(sims_sort))
+        ind_sims = sims_sort.searchsorted(max(a))
+
+        pvals.append((len_sims-ind_sims)/len(sims))
+
+    nsims = np.shape(maxp_all)[0]
+    print("nsims: " + str(nsims))
+    pvals = np.array(pvals)
+    ### Compute theoretical error on p-values
+    pvals_err = pvalues_error(pvals, len(sims))
+
+
 
     ### list of cycles averaged for plot
     cycles = np.arange(len(pvals))+1
 
+
+    print("pvals_all: " + str(pvals))
     fig = figure(figsize=(12,9))
     ax = fig.add_subplot(111)
-
-    errorbar(cycles, pvals, yerr=pvals_err, color='black', ls="solid", marker="o")
+    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_err, fmt="-o", lw=3, color="black", markersize=12)
+    xlabel("Number of averaged cycles", fontsize=20)
+    ylabel("P-value of maximum power", fontsize=20)
+    title("SGR 1806-20, RXTE data, p-value from %i simulations"%nsims)
+    savefig("../documents/f5.pdf", format="pdf")
+    close()
 
     return allstack, pvals, pvals_err
 
@@ -211,134 +231,6 @@ def stitch_savgall_together(froot="test"):
     return savgall
 
 
-def rxte_simulations_results(tnew=None, froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_final",
-                             froot_out="sgr1806_rxte", plotdist=True, maxpowers=True):
-    """
-    Take several simulation runs made with make_rxte_sims() and read them out one after the other,
-    to avoid memory problems when running make_stacks for very large runs.
-
-    NOTE: This requires simulation files run with the EXACT SAME parameters as the ones used for running
-    giantflare.search_singlepulse() on the data below. You'd better make sure this is true. If not,
-    the comparison will not be correct.
-
-    """
-
-    ### if tnew isn't given, read in:
-    tnew = load_rxte_data(climits=[6,190])
-
-
-    ### extract maximum powers from data.
-    ### NOTE: I use 624.0 Hz here as the search frequency, because np.searchsorted finds the first element
-    ### in a list *after* the given one. Because of the way I've done the binning, the highest power is actually
-    ### at 624.5 Hz rather than 625 Hz. So there.
-    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew, nsteps=10, tseg=3.0, df=2.66, fnyquist=1000.0, stack=None,
-                                      setlc=True, freq=624.0)
-
-
-    ### make averaged powers for consecutive cycles, up to 10, for each of the nsteps segments per cycle:
-    allstack = giantflare.make_stacks(savg, 10, 10)
-
-
-
-    if maxpowers is True:
-        maxp_all = np.loadtxt("%s_simulated_maxpowers.txt"%froot_out)
-
-    else:
-        ### find all datafiles with string froot_in in their filename
-        savgfiles = glob.glob("%s*"%froot_in)
-
-        maxp_all = []
-        for f in savgfiles:
-
-            ### load simulation output
-            savgtemp = np.loadtxt(f)
-            print("shape(savgtemp): " + str(np.shape(savgtemp)))
-
-            ### make averaged powers for each of the 10 cycles
-            allstack_temp = []
-            for s in savgtemp:
-                allstack_temp.append(giantflare.make_stacks(s, 10, 10))
-
-            maxp_temp = []
-            for i in xrange(len(allstack)):
-                amax = np.array([np.max(a[i]) for a in allstack_temp])
-                maxp_temp.append(amax)
-
-            maxp_temp = np.transpose(np.array(maxp_temp))
-            maxp_all.extend(maxp_temp)
-
-        maxp_all = np.array(maxp_all)
-        print("shape(maxp_all) " + str(np.shape(maxp_all)))
-
-        np.savetxt("%s_simulated_maxpowers.txt"%froot_out, maxp_all)
-
-    pvals = []
-    for i,a in enumerate(allstack):
-        sims = maxp_all[:,i]
-        print("sims " + str(sims))
-
-        sims_sort = np.sort(sims)
-        len_sims = np.float(len(sims_sort))
-        ind_sims = sims_sort.searchsorted(max(a))
-
-        pvals.append((len_sims-ind_sims)/len(sims))
-
-
-        ### plot distributions of maximum powers against theoretical expectations?
-        if plotdist:
-
-            ### simulated chi-square powers:
-            ### degree of freedom is 2*nbins*ncycles, i.e. 2*no of avg frequency bins*no of avg cycles
-            ### for df = 2.66, nbins=8
-            ### ncycles = i+1 (i.e. index of cycle +1, because index arrays start with zero instead of 1)
-            ### size of output simulations is (n_simulations, n_averagedpowers)
-            chisquare = np.random.chisquare(2*8*(i+1), size=(len_sims,len(a)))/(8.0*(i+1))
-            maxc = np.array([np.max(c) for c in chisquare])
-
-            ### set plotting boundaries
-            minx = 0
-            maxx = np.max([np.max(maxc), np.max(sims)])+1
-
-            fig = figure(figsize=(12,9))
-            ax = fig.add_subplot(111)
-            ns, bins, patches = hist(sims, bins=100, color="cyan", alpha=0.7,
-                                    label=r"maximum powers out of %i segments, %.2e simulations"%(len(a),len_sims),
-                                    histtype="stepfilled", range=[minx,maxx], normed=True)
-
-            nc, bins, patches = hist(maxc, bins=100, color="magenta", alpha=0.7,
-                                    label=r"maximum powers, $\chi^2$ expected powers",
-                                    histtype="stepfilled", range=[minx,maxx], normed=True)
-
-            maxy = np.max([np.max(ns), np.max(nc)])
-            axis([minx, maxx, 0, maxy+0.1*maxy])
-            legend(prop={'size':16}, loc='upper right')
-
-            xlabel("Maximum Leahy powers", fontsize=18)
-            ylabel(r"$p(\mathrm{Maximum Leahy powers})$", fontsize=18)
-            title("Maximum Leahy power distributions for %i averaged cycles"%(i+1), fontsize=18)
-            savefig("%s_maxdist_ncycle%i.png"%(froot_out, (i+1)))
-            close()
-
-    pvals = np.array(pvals)
-
-    np.savetxt("%s_pvals_all.txt"%froot_out, pvals)
-
-    ### Compute theoretical error on p-values
-    pvals_error = pvalues_error(pvals, len(sims))
-
-    ### plot p-values
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-    #plot(np.arange(len(pvals))+1, pvals,"-o", lw=3, color="black", markersize=12)
-    errorbar(np.arange(len(pvals))+1, pvals, yerr=pvals_error, fmt="-o", lw=3, color="black", markersize=12)
-    xlabel("Number of averaged cycles", fontsize=20)
-    ylabel("P-value of maximum power", fontsize=20)
-    title("SGR 1806-20, RXTE data, p-value from %i simulations"%len_sims)
-    savefig("%s_pvals.png"%froot_out, format="png")
-    close()
-
-    return pvals
 
 def periodogram_nosignal(froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_final", froot_out="sgr1806_rxte"):
     """
@@ -409,35 +301,18 @@ def periodogram_nosignal(froot_in="1806_rxte_tseg=3.0_df=2.66_nsteps=10_f=625Hz_
     return pval, savg_nosig_sims_sorted
 
 
-def compute_quantiles(savg_all, quantiles=[0.05, 0.5, 0.95]):
+
+def rxte_qpo_sims_singlecycle(nsims=1000):
+
+
     """
-    Quick-and-dirty quantile calculation for simulated light curves.
-    Used in rxte_qpo_sims_singlecycle below.
-
-    savg_all needs to be of shape [nsims, nbins], where nsims is the number of simulated
-    light curves, and nbins is the number of bins within each light curve.
+    Make nsims simulations with a periodic signal added exactly at 624 Hz, then compute powers at that frequency
+    for each simulation in segments in the rotational cycle with the strongest signal in the real data, and compare
+    the simulated powers with those observed. Makes Figure 6 of the paper.
     """
-
-    ### number of simulations
-    nsims = len(savg_all)
-
-    q_sims = np.array(quantiles)*nsims
-    print("q_sims: " + str(q_sims))
-
-    sq_all = []
-    for s in np.transpose(savg_all):
-        s_sort = np.sort(s)
-
-        sq = [s_sort[int(i)] for i in q_sims]
-        sq_all.append(sq)
-
-    return np.array(sq_all)
-
-
-def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
 
     coarsesteps = 10
-    finesteps = 750 ### starting approx every 0.01s apart
+    finesteps = 750 ## starting approx every 0.01s apart
 
     tnew = load_rxte_data()
 
@@ -460,8 +335,8 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
 
     pvals_all, mid_coarse_all, mid_fine_all, savg_coarse_all, savg_fine_all = [], [], [], [], []
     ### load simulated maxpowers without QPO signal
-    maxp_all = np.loadtxt("sgr1806_rxte_simulated_maxpowers.txt")
-    print("shape(maxp_all): " + str(np.shape(maxp_all)))
+    maxp_all = np.loadtxt("../data/sgr1806_rxte_simulated_maxpowers.txt")
+    #print("shape(maxp_all): " + str(np.shape(maxp_all)))
 
 
     for j,lc in enumerate(lcsimall):
@@ -482,7 +357,7 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
             maxp = np.max(a)
 
             sims = np.sort(maxp_all[:,i])
-            print("len(sims): " + str(len(sims)))
+            #print("len(sims): " + str(len(sims)))
 
 
             max_ind = sims.searchsorted(maxp)
@@ -515,12 +390,10 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
             giantflare.search_singlepulse(tnew_small, nsteps=finesteps, tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
                                           setlc=True, freq=624.0)
 
-    print("shape(savg_fine_all: " + str(np.shape(savg_fine)))
 
     ### compute quantiles:
-    sq_all = compute_quantiles(savg_fine_all, quantiles=[0.05,0.5,0.95])
+    sq_all = utils.compute_quantiles(savg_fine_all, quantiles=[0.05,0.5,0.95])
 
-    print("len(mid): " + str(len(mid_fine_all[0])))
 
     np.savetxt("1806_rxte_strongestcycle_quantiles.txt", sq_all)
     np.savetxt("1806_rxte_strongestcycle_midbins.txt", mid_fine_all[0])
@@ -566,61 +439,13 @@ def rxte_qpo_sims_singlecycle(nsims=1000, froot="sgr1806_rxte"):
     xlabel("Number of averaged cycles", fontsize=20)
     ylabel("log(p-value)", fontsize=20)
 
-    savefig("sgr1806_rxte_strongestcycle_powers.png", format="png")
+    savefig("../documents/f6.pdf", format="pdf")
     close()
-
 
 
     return mid_coarse_all, savg_coarse_all, mid_fine_all, savg_fine_all, pvals_all
 
 
-def rxte_highres():
-
-    ### load RXTE data
-    tnew = load_rxte_data()
-
-    dt = 0.1
-    nsteps = int((1.0/0.132)/dt)
-
-
-    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = giantflare.search_singlepulse(tnew, nsteps=nsteps,tseg=3.0,
-                                                                                            df=2.66, fnyquist=1000.0,
-                                                                                            stack=None, setlc=True,
-                                                                                            freq=624.0)
-
-    fig = figure(figsize=(12,9))
-    ax = fig.add_subplot(111)
-
-    colours= ["black", "red", "cyan", "orange", "mediumseagreen", "magenta", "blue", "grey", "yellow"]
-    for i in range(9):
-        plot(mid[i*nsteps+int(nsteps/2):(i+1)*nsteps+int(nsteps/2)]-mid[i*nsteps+int(nsteps/2)],
-             savg[i*nsteps+int(nsteps/2):(i+1)*nsteps+int(nsteps/2)], lw=3, linestyle="steps-mid",
-             color=colours[i],label="cycle %i"%i)
-
-        plt.hlines(2.0, 0.0,7.575757, lw=7, color="black", linestyle="dashed", label="average noise level")
-        axis([0,1.0/0.132, 0, 12])
-        legend(prop={"size":16})
-        xlabel("Phase (in periods)", fontsize=18)
-        ylabel("Averaged Leahy Power", fontsize=18)
-
-        title("Leahy Power versus rotational phase for all nine cycles")
-        savefig("sgr1806_rxte_phaseplot.png", format="png")
-        close()
-
-
-    minind = tnew.searchsorted(235.4792253970644)
-    maxind = tnew.searchsorted(235.4792253970644+2*1.0/0.132)
-
-    tnew_small = tnew[minind:maxind]
-
-    dt = 1.0/624.5
-    nsteps = (1.0/0.132)/dt
-
-    lcall, psall, mid, savg, xerr, ntrials, sfreqs, spowers = \
-        giantflare.search_singlepulse(tnew_small, nsteps=nsteps,tseg=0.5, df=2.00, fnyquist=1000.0, stack=None,
-                                      setlc=True, freq=624.0)
-
-    return mid, savg
 
 ########################################################################################################################
 ######## SECOND BIT: RHESSI ANALYSIS ###################################################################################
@@ -2015,7 +1840,6 @@ def rhessi_qpo_powers_images(tseg_all=[0.5,1.0,2.0,2.5], df_all=[2.0, 1.0, 1.0, 
         close()
 
     return #pvals_all, pvals_hist_all
-
 
 
 
