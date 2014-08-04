@@ -1414,7 +1414,7 @@ def plot_lightcurves(datadir="./"):
 
     axis([35, 350, 1.0, 4.5])
     xlabel("Time since trigger [s]", fontsize=24, labelpad=15)
-    ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
+    #ylabel(r"$\log_{10}{(\mathrm{Count rate}}$ [counts/s]", fontsize=24)
     title("RHESSI Light Curve, 100-200 keV")
 
     arrow(52, 3.1, 200-52, 0, fc="k", ec="k", head_width=0.07, head_length=6, lw=3)
